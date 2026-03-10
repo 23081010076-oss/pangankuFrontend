@@ -1,0 +1,59 @@
+name: panganku_mobile
+description: Aplikasi mobile ketahanan pangan Lamongan
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State Management
+  flutter_bloc: ^8.1.6
+  equatable: ^2.0.5
+
+  # Navigation
+  go_router: ^13.2.0
+
+  # Networking
+  dio: ^5.4.3
+
+  # Local Storage
+  flutter_secure_storage: ^9.2.2
+  hive_flutter: ^1.1.0
+
+  # UI
+  google_fonts: ^6.1.0
+  fl_chart: ^0.67.0
+  shimmer: ^3.0.0
+  cached_network_image: ^3.3.1
+
+  # Maps
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+
+  # Push Notifications (optional)
+  firebase_messaging: ^14.9.4
+
+  # Utils
+  intl: ^0.19.0
+
+  # PDF & Print
+  pdf: ^3.10.8
+  printing: ^5.12.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  bloc_test: ^9.1.7
+  mocktail: ^1.0.3
+
+flutter:
+  uses-material-design: true
+
+  # assets:
+  #   - assets/images/
+  #   - assets/icons/

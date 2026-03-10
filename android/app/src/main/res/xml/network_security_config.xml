@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Allow cleartext traffic to development backend only -->
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- Android emulator → host machine -->
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <!-- Local development (desktop/web) -->
+        <domain includeSubdomains="false">localhost</domain>
+        <!-- Physical device connected via USB/WiFi (192.168.x.x range) -->
+        <domain includeSubdomains="false">192.168.0.0</domain>
+    </domain-config>
+</network-security-config>
