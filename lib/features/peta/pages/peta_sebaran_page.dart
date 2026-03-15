@@ -158,6 +158,19 @@ class _PetaSebaranViewState extends State<_PetaSebaranView> {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
           child: Row(
             children: [
+              GestureDetector(
+                onTap: () => Navigator.of(context).maybePop(),
+                child: Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child:
+                      const Icon(Icons.arrow_back, size: 16, color: Colors.white),
+                ),
+              ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
