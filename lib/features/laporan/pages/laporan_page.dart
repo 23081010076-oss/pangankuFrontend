@@ -524,7 +524,7 @@ class _LaporanPageState extends State<LaporanPage>
           color: Color(0xFF2E7D32),
         ),
         label: const Text(
-          'Cetak PDF Laporan',
+          'Cetak PDF Analitik & Laporan',
           style: TextStyle(
             color: Color(0xFF2E7D32),
             fontWeight: FontWeight.w600,
@@ -556,6 +556,67 @@ class _LaporanPageState extends State<LaporanPage>
     final now = DateTime.now();
     final dateStr = DateFormat('dd MMMM yyyy').format(now);
     final headerBg = PdfColor(46 / 255, 125 / 255, 50 / 255);
+    final accentBlue = PdfColor(25 / 255, 118 / 255, 210 / 255);
+
+    String formatRupiah(double value) {
+      return 'Rp ${NumberFormat('#,###', 'id').format(value.round())}';
+    }
+
+    List<String> trendHeaders = ['Komoditas', 'Rata-rata', 'Min', 'Max', 'H-0'];
+    List<List<String>> trendRows = [
+      [
+        'Beras',
+        formatRupiah(stats.avgHargaBeras),
+        formatRupiah(stats.harga7HariBeras.isEmpty
+            ? 0
+            : stats.harga7HariBeras.reduce((a, b) => a < b ? a : b)),
+        formatRupiah(stats.harga7HariBeras.isEmpty
+            ? 0
+            : stats.harga7HariBeras.reduce((a, b) => a > b ? a : b)),
+        formatRupiah(stats.harga7HariBeras.isEmpty
+            ? 0
+            : stats.harga7HariBeras.last),
+      ],
+      [
+        'Jagung',
+        formatRupiah(stats.avgHargaJagung),
+        formatRupiah(stats.harga7HariJagung.isEmpty
+            ? 0
+            : stats.harga7HariJagung.reduce((a, b) => a < b ? a : b)),
+        formatRupiah(stats.harga7HariJagung.isEmpty
+            ? 0
+            : stats.harga7HariJagung.reduce((a, b) => a > b ? a : b)),
+        formatRupiah(stats.harga7HariJagung.isEmpty
+            ? 0
+            : stats.harga7HariJagung.last),
+      ],
+      [
+        'Kedelai',
+        formatRupiah(stats.avgHargaKedelai),
+        formatRupiah(stats.harga7HariKedelai.isEmpty
+            ? 0
+            : stats.harga7HariKedelai.reduce((a, b) => a < b ? a : b)),
+        formatRupiah(stats.harga7HariKedelai.isEmpty
+            ? 0
+            : stats.harga7HariKedelai.reduce((a, b) => a > b ? a : b)),
+        formatRupiah(stats.harga7HariKedelai.isEmpty
+            ? 0
+            : stats.harga7HariKedelai.last),
+      ],
+      [
+        'Cabai',
+        formatRupiah(stats.avgHargaCabai),
+        formatRupiah(stats.harga7HariCabai.isEmpty
+            ? 0
+            : stats.harga7HariCabai.reduce((a, b) => a < b ? a : b)),
+        formatRupiah(stats.harga7HariCabai.isEmpty
+            ? 0
+            : stats.harga7HariCabai.reduce((a, b) => a > b ? a : b)),
+        formatRupiah(stats.harga7HariCabai.isEmpty
+            ? 0
+            : stats.harga7HariCabai.last),
+      ],
+    ];
 
     doc.addPage(
       pw.MultiPage(
@@ -612,9 +673,6 @@ class _LaporanPageState extends State<LaporanPage>
                 'Harga Rata-rata Beras',
                 'Rp ${NumberFormat('#,###').format(stats.avgHargaBeras)}/kg',
               ],
-              ['Kecamatan Aman', '${stats.kecamatanAman}'],
-              ['Kecamatan Waspada', '${stats.kecamatanWaspada}'],
-              ['Kecamatan Kritis', '${stats.kecamatanKritis}'],
             ],
             headerStyle: pw.TextStyle(
               fontWeight: pw.FontWeight.bold,
@@ -627,6 +685,55 @@ class _LaporanPageState extends State<LaporanPage>
               1: pw.Alignment.centerRight,
             },
             cellHeight: 22,
+          ),
+          pw.SizedBox(height: 16),
+          pw.Text(
+            'Status Kecamatan',
+            style: pw.TextStyle(
+              fontSize: 12,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+          pw.SizedBox(height: 8),
+          pw.TableHelper.fromTextArray(
+            headers: ['Status', 'Jumlah Kecamatan'],
+            data: [
+              ['Aman', '${stats.kecamatanAman}'],
+              ['Waspada', '${stats.kecamatanWaspada}'],
+              ['Kritis', '${stats.kecamatanKritis}'],
+            ],
+            headerStyle: pw.TextStyle(
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.white,
+            ),
+            headerDecoration: pw.BoxDecoration(color: headerBg),
+            border: pw.TableBorder.all(),
+            cellAlignments: {
+              0: pw.Alignment.centerLeft,
+              1: pw.Alignment.centerRight,
+            },
+            cellHeight: 22,
+          ),
+          pw.SizedBox(height: 16),
+          pw.Text(
+            'Tren Harga 7 Hari (Data)',
+            style: pw.TextStyle(
+              fontSize: 12,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+          pw.SizedBox(height: 8),
+          pw.TableHelper.fromTextArray(
+            headers: trendHeaders,
+            data: trendRows,
+            headerStyle: pw.TextStyle(
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.white,
+            ),
+            headerDecoration: pw.BoxDecoration(color: accentBlue),
+            border: pw.TableBorder.all(color: PdfColors.grey400),
+            cellStyle: const pw.TextStyle(fontSize: 9),
+            cellHeight: 20,
           ),
           pw.SizedBox(height: 22),
           pw.Text(

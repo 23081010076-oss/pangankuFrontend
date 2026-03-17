@@ -1,6 +1,8 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import '../bloc/distribusi_bloc.dart';
 import '../bloc/distribusi_event.dart';
 import '../bloc/distribusi_state.dart';
@@ -18,6 +20,10 @@ class DistribusiPage extends StatefulWidget {
 class _DistribusiPageState extends State<DistribusiPage> {
   String _selectedStatus = 'semua';
   int? _expandedIndex;
+  final Map<String, _RuteData> _ruteCache = {};
+  final Set<String> _loadingRute = {};
+  final Map<String, String> _ruteError = {};
+  Map<String, LatLng>? _kecamatanCoords;
 
   static const _statusList = [
     'semua',
@@ -26,6 +32,91 @@ class _DistribusiPageState extends State<DistribusiPage> {
     'selesai',
     'dibatalkan',
   ];
+
+  Future<void> _toggleExpand(DistribusiItem item, int index) async {
+    final isExpanded = _expandedIndex == index;
+    setState(() => _expandedIndex = isExpanded ? null : index);
+    if (!isExpanded) {
+      await _loadRute(item.id);
+    }
+  }
+
+  Future<void> _loadRute(String distribusiId) async {
+    if (_ruteCache.containsKey(distribusiId) || _loadingRute.contains(distribusiId)) {
+      return;
+    }
+
+    setState(() {
+      _loadingRute.add(distribusiId);
+      _ruteError.remove(distribusiId);
+    });
+
+    try {
+      await _ensureKecamatanCoords();
+      final res = await DioClient().dio.get('/distribusi/$distribusiId/rute');
+      final data = res.data as Map<String, dynamic>;
+      final rawSteps = (data['rute'] as List<dynamic>? ?? []);
+      final steps = rawSteps
+          .whereType<Map<String, dynamic>>()
+          .map(
+            (e) => _RuteStep(
+              id: e['kecamatan_id']?.toString() ?? '',
+              nama: e['kecamatan_nama']?.toString() ?? '-',
+            ),
+          )
+          .where((s) => s.id.isNotEmpty)
+          .toList();
+
+      final points = <LatLng>[];
+      final coords = _kecamatanCoords ?? {};
+      for (final step in steps) {
+        final p = coords[step.id];
+        if (p != null) {
+          points.add(p);
+        }
+      }
+
+      setState(() {
+        _ruteCache[distribusiId] = _RuteData(
+          steps: steps,
+          points: points,
+          jarakKm: (data['jarak_km'] as num?)?.toDouble() ?? 0,
+        );
+      });
+    } catch (_) {
+      setState(() {
+        _ruteError[distribusiId] = 'Rute gagal dimuat';
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _loadingRute.remove(distribusiId));
+      }
+    }
+  }
+
+  Future<void> _ensureKecamatanCoords() async {
+    if (_kecamatanCoords != null) {
+      return;
+    }
+    final res = await DioClient().dio.get('/kecamatan');
+    final payload = res.data;
+    final list = payload is Map ? (payload['data'] ?? payload) : payload;
+    final map = <String, LatLng>{};
+    if (list is List) {
+      for (final row in list) {
+        if (row is! Map) {
+          continue;
+        }
+        final id = row['id']?.toString() ?? '';
+        final lat = (row['lat'] as num?)?.toDouble();
+        final lng = (row['lng'] as num?)?.toDouble();
+        if (id.isNotEmpty && lat != null && lng != null) {
+          map[id] = LatLng(lat, lng);
+        }
+      }
+    }
+    _kecamatanCoords = map;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +129,7 @@ class _DistribusiPageState extends State<DistribusiPage> {
         if (state is DistribusiSaved) {
           ScaffoldMessenger.of(ctx).showSnackBar(
             const SnackBar(
-              content: Text('Distribusi berhasil dibuat'),
+              content: Text('Perubahan distribusi berhasil disimpan'),
               backgroundColor: Color(0xFF2E7D32),
             ),
           );
@@ -306,7 +397,7 @@ class _DistribusiPageState extends State<DistribusiPage> {
     final etaStr = eta != null ? DateFormat('HH:mm', 'id').format(eta) : '-';
 
     return GestureDetector(
-      onTap: () => setState(() => _expandedIndex = isExpanded ? null : index),
+      onTap: () => _toggleExpand(item, index),
       child: Container(
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
         decoration: BoxDecoration(
@@ -408,6 +499,8 @@ class _DistribusiPageState extends State<DistribusiPage> {
                     ),
                     const SizedBox(height: 6),
                     _detailRow(Icons.flag_outlined, 'ETA', etaStr),
+                    const SizedBox(height: 10),
+                    _buildRuteSection(item),
                   ],
                 ),
               ),
@@ -422,18 +515,64 @@ class _DistribusiPageState extends State<DistribusiPage> {
                 color: Colors.grey[400],
               ),
             ),
-            if (_canEditContext(context) &&
-                item.status != 'selesai' &&
-                item.status != 'dibatalkan') ...[
+            if (_canEditContext(context)) ...[
               const Divider(height: 1),
               Padding(
                 padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
                 child: Row(
                   children: [
-                    const Text('Update: ',
-                        style: TextStyle(fontSize: 12, color: Colors.grey)),
-                    const SizedBox(width: 8),
-                    _statusUpdateDropdown(context, item),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          const Text('Update: ',
+                              style: TextStyle(fontSize: 12, color: Colors.grey)),
+                          const SizedBox(width: 8),
+                          if (item.status != 'selesai' && item.status != 'dibatalkan')
+                            _statusUpdateDropdown(context, item)
+                          else
+                            const Text(
+                              'Status final',
+                              style: TextStyle(fontSize: 12, color: Colors.grey),
+                            ),
+                        ],
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => _showEditStatusDialog(context, item),
+                      icon: const Icon(
+                        Icons.edit_outlined,
+                        size: 14,
+                        color: Color(0xFF1976D2),
+                      ),
+                      label: const Text(
+                        'Edit',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF1976D2),
+                        ),
+                      ),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => _confirmDeleteDistribusi(context, item.id),
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        size: 14,
+                        color: Color(0xFFC62828),
+                      ),
+                      label: const Text(
+                        'Hapus',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFFC62828),
+                        ),
+                      ),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -441,6 +580,207 @@ class _DistribusiPageState extends State<DistribusiPage> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showEditStatusDialog(BuildContext ctx, DistribusiItem item) {
+    const statuses = ['dijadwalkan', 'proses', 'selesai', 'dibatalkan'];
+    String selected = statuses.contains(item.status) ? item.status : 'dijadwalkan';
+
+    showDialog(
+      context: ctx,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (dialogCtx2, setDialogState) => AlertDialog(
+          title: const Text('Edit Status Distribusi'),
+          content: DropdownButtonFormField<String>(
+            initialValue: selected,
+            items: statuses
+                .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                .toList(),
+            onChanged: (v) {
+              if (v != null) {
+                setDialogState(() => selected = v);
+              }
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx2),
+              child: const Text('Batal'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                ctx.read<DistribusiBloc>().add(
+                      UpdateDistribusiStatus(id: item.id, status: selected),
+                    );
+                Navigator.pop(dialogCtx2);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1565C0),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Simpan'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteDistribusi(BuildContext ctx, String id) {
+    showDialog(
+      context: ctx,
+      builder: (_) => AlertDialog(
+        title: const Text('Hapus Distribusi?'),
+        content: const Text('Tindakan ini tidak dapat dibatalkan.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              ctx.read<DistribusiBloc>().add(DeleteDistribusi(id));
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFC62828),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRuteSection(DistribusiItem item) {
+    if (_loadingRute.contains(item.id)) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 10),
+        child: Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
+
+    final err = _ruteError[item.id];
+    if (err != null) {
+      return Text(
+        err,
+        style: const TextStyle(fontSize: 12, color: Color(0xFFC62828)),
+      );
+    }
+
+    final rute = _ruteCache[item.id];
+    if (rute == null || rute.steps.isEmpty) {
+      return const Text(
+        'Data rute belum tersedia',
+        style: TextStyle(fontSize: 12, color: Colors.grey),
+      );
+    }
+
+    final points = rute.points;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.route_outlined, size: 14, color: Color(0xFF1976D2)),
+            const SizedBox(width: 6),
+            Text(
+              'Rute ${rute.jarakKm.toStringAsFixed(1)} km',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1976D2),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: rute.steps
+              .map(
+                (s) => Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE3F2FD),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    s.nama,
+                    style: const TextStyle(fontSize: 11, color: Color(0xFF1565C0)),
+                  ),
+                ),
+              )
+              .toList(),
+        ),
+        const SizedBox(height: 10),
+        if (points.length >= 2)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              height: 180,
+              child: FlutterMap(
+                options: MapOptions(
+                  initialCenter: points[0],
+                  initialZoom: 10,
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.example.panganku_mobile',
+                  ),
+                  PolylineLayer(
+                    polylines: [
+                      Polyline(
+                        points: points,
+                        strokeWidth: 4,
+                        color: const Color(0xFF1976D2),
+                      ),
+                    ],
+                  ),
+                  MarkerLayer(
+                    markers: [
+                      Marker(
+                        point: points.first,
+                        width: 32,
+                        height: 32,
+                        child: const Icon(
+                          Icons.trip_origin,
+                          color: Color(0xFF2E7D32),
+                          size: 24,
+                        ),
+                      ),
+                      Marker(
+                        point: points.last,
+                        width: 32,
+                        height: 32,
+                        child: const Icon(
+                          Icons.location_on,
+                          color: Color(0xFFC62828),
+                          size: 24,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          const Text(
+            'Koordinat rute belum lengkap',
+            style: TextStyle(fontSize: 11, color: Colors.grey),
+          ),
+      ],
     );
   }
 
@@ -550,6 +890,25 @@ class _DistribusiPageState extends State<DistribusiPage> {
       ),
     );
   }
+}
+
+class _RuteData {
+  final List<_RuteStep> steps;
+  final List<LatLng> points;
+  final double jarakKm;
+
+  const _RuteData({
+    required this.steps,
+    required this.points,
+    required this.jarakKm,
+  });
+}
+
+class _RuteStep {
+  final String id;
+  final String nama;
+
+  const _RuteStep({required this.id, required this.nama});
 }
 
 class _CreateDistribusiSheet extends StatefulWidget {

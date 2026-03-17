@@ -18,3 +18,8 @@ class CreateOrUpdateStok extends StokEvent {
   CreateOrUpdateStok({required this.komoditasId, required this.kecamatanId,
       required this.stokKg, required this.kapasitasKg,});
 }
+
+class DeleteStok extends StokEvent {
+  final String id;
+  DeleteStok(this.id);
+}

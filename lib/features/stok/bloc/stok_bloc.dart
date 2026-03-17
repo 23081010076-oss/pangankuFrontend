@@ -10,6 +10,7 @@ class StokBloc extends Bloc<StokEvent, StokState> {
   StokBloc(this._client) : super(StokInitial()) {
     on<LoadStokList>(_onLoad);
     on<CreateOrUpdateStok>(_onCreateOrUpdateStok);
+    on<DeleteStok>(_onDeleteStok);
     on<RefreshStok>(_onRefresh);
   }
 
@@ -59,6 +60,24 @@ class StokBloc extends Bloc<StokEvent, StokState> {
       emit(StokError(e.response?.data is Map
           ? e.response!.data['error'] ?? 'Gagal menyimpan stok'
           : 'Gagal menyimpan stok',),);
+    }
+  }
+
+  Future<void> _onDeleteStok(
+      DeleteStok event, Emitter<StokState> emit,) async {
+    emit(StokSaving());
+    try {
+      final response = await _client.dio.delete('/stok/${event.id}');
+      if (response.statusCode == 200) {
+        emit(StokSaved());
+        add(LoadStokList());
+      } else {
+        emit(StokError('Gagal menghapus data stok'));
+      }
+    } on DioException catch (e) {
+      emit(StokError(e.response?.data is Map
+          ? e.response!.data['error'] ?? 'Gagal menghapus stok'
+          : 'Gagal menghapus stok',),);
     }
   }
 }

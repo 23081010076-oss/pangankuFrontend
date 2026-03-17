@@ -21,7 +21,7 @@ class _UsersAdminPageState extends State<UsersAdminPage> {
   int _total = 0;
   static const int _limit = 20;
 
-  final _roles = ['Semua', 'admin', 'petugas', 'petani', 'publik'];
+  final _roles = ['Semua', 'admin', 'petugas', 'petani', 'pedagang', 'publik'];
 
   @override
   void initState() {
@@ -68,7 +68,7 @@ class _UsersAdminPageState extends State<UsersAdminPage> {
   }
 
   Future<void> _updateRole(String id, String currentRole) async {
-    final roles = ['admin', 'petugas', 'petani', 'publik'];
+    final roles = ['admin', 'petugas', 'petani', 'pedagang', 'publik'];
     String? selected = currentRole;
 
     final newRole = await showDialog<String>(
@@ -378,6 +378,8 @@ class _UsersAdminPageState extends State<UsersAdminPage> {
         return 'Petugas';
       case 'petani':
         return 'Petani';
+      case 'pedagang':
+        return 'Pedagang';
       default:
         return 'Publik';
     }
@@ -391,6 +393,8 @@ class _UsersAdminPageState extends State<UsersAdminPage> {
         return const Color(0xFF1565C0);
       case 'petani':
         return const Color(0xFF2E7D32);
+      case 'pedagang':
+        return const Color(0xFF00897B);
       default:
         return Colors.grey;
     }

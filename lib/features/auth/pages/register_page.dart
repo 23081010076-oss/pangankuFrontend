@@ -19,6 +19,7 @@ class _RegisterPageState extends State<RegisterPage>
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
+  String _selectedRole = 'publik';
   bool _obscure = true;
 
   late AnimationController _animController;
@@ -60,6 +61,7 @@ class _RegisterPageState extends State<RegisterPage>
               email: _emailCtrl.text.trim(),
               password: _passCtrl.text,
               phone: _phoneCtrl.text.trim(),
+              role: _selectedRole,
             ),
           );
     }
@@ -184,6 +186,33 @@ class _RegisterPageState extends State<RegisterPage>
                                     'Nomor HP (opsional)',
                                     Icons.phone_outlined,
                                   ),
+                                ),
+                                const SizedBox(height: 14),
+                                DropdownButtonFormField<String>(
+                                  initialValue: _selectedRole,
+                                  decoration: _inputDecoration(
+                                    'Peran Akun',
+                                    Icons.badge_outlined,
+                                  ),
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: 'publik',
+                                      child: Text('Publik'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'petani',
+                                      child: Text('Petani'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'pedagang',
+                                      child: Text('Pedagang'),
+                                    ),
+                                  ],
+                                  onChanged: (v) {
+                                    if (v != null) {
+                                      setState(() => _selectedRole = v);
+                                    }
+                                  },
                                 ),
                                 const SizedBox(height: 14),
                                 TextFormField(

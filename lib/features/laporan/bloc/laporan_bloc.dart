@@ -76,7 +76,7 @@ class LaporanBloc extends Bloc<LaporanEvent, LaporanState> {
     emit(LaporanSubmitting());
     try {
       await _client.dio
-          .put('/laporan/\${event.id}/status', data: {'status': event.status});
+          .put('/laporan/${event.id}/status', data: {'status': event.status});
       emit(LaporanStatusUpdated());
       add(LoadLaporanList());
     } on DioException catch (e) {
@@ -91,7 +91,7 @@ class LaporanBloc extends Bloc<LaporanEvent, LaporanState> {
       DeleteLaporan event, Emitter<LaporanState> emit,) async {
     emit(LaporanSubmitting());
     try {
-      await _client.dio.delete('/laporan/\${event.id}');
+      await _client.dio.delete('/laporan/${event.id}');
       emit(LaporanDeleted());
       add(LoadLaporanList());
     } on DioException catch (e) {

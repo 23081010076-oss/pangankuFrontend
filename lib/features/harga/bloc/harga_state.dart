@@ -13,6 +13,10 @@ class HargaCreating extends HargaState {}
 
 class HargaCreated extends HargaState {}
 
+class HargaUpdated extends HargaState {}
+
+class HargaDeleted extends HargaState {}
+
 class HargaLoaded extends HargaState {
   final List<HargaItem> hargaList;
   final List<TrendData>? trendData;

@@ -45,6 +45,22 @@ class _HargaPageState extends State<HargaPage> {
             ),
           );
         }
+        if (state is HargaUpdated) {
+          ScaffoldMessenger.of(ctx).showSnackBar(
+            const SnackBar(
+              content: Text('Data harga berhasil diperbarui'),
+              backgroundColor: Color(0xFF2E7D32),
+            ),
+          );
+        }
+        if (state is HargaDeleted) {
+          ScaffoldMessenger.of(ctx).showSnackBar(
+            const SnackBar(
+              content: Text('Data harga berhasil dihapus'),
+              backgroundColor: Color(0xFF2E7D32),
+            ),
+          );
+        }
         if (state is HargaError) {
           ScaffoldMessenger.of(ctx).showSnackBar(
             SnackBar(
@@ -57,11 +73,15 @@ class _HargaPageState extends State<HargaPage> {
       builder: (ctx, state) {
         final authState = ctx.read<AuthBloc>().state;
         final role = authState is AuthAuthenticated ? authState.role : '';
-        final canEdit = role == 'admin' || role == 'petugas';
+        final canUpdate = role == 'admin' ||
+            role == 'petugas' ||
+            role == 'petani' ||
+            role == 'pedagang';
+        final canDelete = role == 'admin' || role == 'petugas';
 
         return Scaffold(
           backgroundColor: const Color(0xFFF5F7FA),
-          floatingActionButton: canEdit
+            floatingActionButton: canUpdate
               ? FloatingActionButton.extended(
                   onPressed: () => _showCreateForm(ctx),
                   label: const Text('Tambah Data'),
@@ -81,7 +101,7 @@ class _HargaPageState extends State<HargaPage> {
                   SliverToBoxAdapter(
                     child: _buildKategoriFilter(state.kategoris),
                   ),
-                  _buildList(ctx, state),
+                  _buildList(ctx, state, canUpdate, canDelete),
                 ] else if (state is HargaLoading) ...[
                   const SliverFillRemaining(
                     child: Center(
@@ -228,7 +248,12 @@ class _HargaPageState extends State<HargaPage> {
     );
   }
 
-  SliverList _buildList(BuildContext ctx, HargaLoaded state) {
+  SliverList _buildList(
+    BuildContext ctx,
+    HargaLoaded state,
+    bool canUpdate,
+    bool canDelete,
+  ) {
     var items = state.hargaList;
     if (_selectedKategori != 'Semua') {
       items = items.where((i) => i.kategori == _selectedKategori).toList();
@@ -263,7 +288,8 @@ class _HargaPageState extends State<HargaPage> {
 
     return SliverList(
       delegate: SliverChildBuilderDelegate(
-        (ctx2, i) => _buildKomoditasCard(ctx, items[i], state),
+        (ctx2, i) =>
+            _buildKomoditasCard(ctx, items[i], state, canUpdate, canDelete),
         childCount: items.length,
       ),
     );
@@ -273,6 +299,8 @@ class _HargaPageState extends State<HargaPage> {
     BuildContext ctx,
     HargaItem item,
     HargaLoaded state,
+    bool canUpdate,
+    bool canDelete,
   ) {
     final trendColor = item.trend == 'NAIK'
         ? const Color(0xFFC62828)
@@ -366,6 +394,42 @@ class _HargaPageState extends State<HargaPage> {
                     ),
                   ],
                 ),
+                if (canUpdate || canDelete) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (canUpdate)
+                        GestureDetector(
+                          onTap: () {
+                            _showEditHargaDialog(ctx, item);
+                          },
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 4),
+                            child: Icon(
+                              Icons.edit_outlined,
+                              size: 16,
+                              color: Color(0xFF1976D2),
+                            ),
+                          ),
+                        ),
+                      if (canDelete)
+                        GestureDetector(
+                          onTap: () {
+                            _confirmDeleteHarga(ctx, item);
+                          },
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 4),
+                            child: Icon(
+                              Icons.delete_outline,
+                              size: 16,
+                              color: Color(0xFFC62828),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
               ],
             ),
             const SizedBox(width: 4),
@@ -400,6 +464,122 @@ class _HargaPageState extends State<HargaPage> {
       builder: (_) => BlocProvider.value(
         value: ctx.read<HargaBloc>(),
         child: const _TambahHargaSheet(),
+      ),
+    );
+  }
+
+  void _showEditHargaDialog(BuildContext ctx, HargaItem item) {
+    final hargaCtrl = TextEditingController(
+      text: item.harga.toStringAsFixed(0),
+    );
+    DateTime tanggal = DateTime.tryParse(item.tanggal) ?? DateTime.now();
+
+    showDialog(
+      context: ctx,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (dialogCtx2, setDialogState) => AlertDialog(
+          title: const Text('Edit Harga'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: hargaCtrl,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'Harga per kg',
+                  prefixText: 'Rp ',
+                ),
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Tanggal'),
+                subtitle: Text(DateFormat('dd MMM yyyy', 'id').format(tanggal)),
+                trailing: const Icon(Icons.calendar_today_outlined, size: 18),
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: dialogCtx2,
+                    initialDate: tanggal,
+                    firstDate: DateTime.now().subtract(const Duration(days: 90)),
+                    lastDate: DateTime.now(),
+                  );
+                  if (picked != null) {
+                    setDialogState(() => tanggal = picked);
+                  }
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogCtx2).pop(),
+              child: const Text('Batal'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final value = double.tryParse(hargaCtrl.text.replaceAll(',', '.'));
+                if (value == null || value <= 0) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    SnackBar(
+                      content: const Text('Harga tidak valid'),
+                      backgroundColor: Colors.red[700],
+                    ),
+                  );
+                  return;
+                }
+
+                final now = DateTime.now();
+                final isToday = tanggal.year == now.year &&
+                    tanggal.month == now.month &&
+                    tanggal.day == now.day;
+                final tanggalUtc = isToday
+                    ? now.toUtc().toIso8601String()
+                    : '${DateFormat('yyyy-MM-dd').format(tanggal)}T23:59:59Z';
+
+                ctx.read<HargaBloc>().add(
+                      UpdateHarga(
+                        id: item.id,
+                        hargaPerKg: value,
+                        tanggal: tanggalUtc,
+                      ),
+                    );
+                Navigator.of(dialogCtx2).pop();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2E7D32),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Simpan'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteHarga(BuildContext ctx, HargaItem item) {
+    showDialog(
+      context: ctx,
+      builder: (_) => AlertDialog(
+        title: const Text('Hapus Data Harga?'),
+        content: Text('Hapus data ${item.komoditasNama} ini?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              ctx.read<HargaBloc>().add(DeleteHarga(item.id));
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFC62828),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Hapus'),
+          ),
+        ],
       ),
     );
   }

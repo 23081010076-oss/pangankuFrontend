@@ -11,6 +11,8 @@ class HargaBloc extends Bloc<HargaEvent, HargaState> {
     on<LoadHargaList>(_onLoadHargaList);
     on<LoadHargaTrend>(_onLoadHargaTrend);
     on<CreateHarga>(_onCreateHarga);
+    on<UpdateHarga>(_onUpdateHarga);
+    on<DeleteHarga>(_onDeleteHarga);
     on<RefreshHarga>((_, __) => add(LoadHargaList()));
   }
 
@@ -70,7 +72,7 @@ class HargaBloc extends Bloc<HargaEvent, HargaState> {
     final current = state is HargaLoaded ? state as HargaLoaded : null;
     try {
       final response = await _client.dio.get(
-        '/harga/trend/\${event.komoditasId}',
+        '/harga/trend/${event.komoditasId}',
         queryParameters: {'periode': event.periode},
       );
 
@@ -116,6 +118,45 @@ class HargaBloc extends Bloc<HargaEvent, HargaState> {
       emit(HargaError(e.response?.data is Map
           ? e.response!.data['error'] ?? 'Gagal menyimpan harga'
           : 'Gagal menyimpan harga',),);
+    }
+  }
+
+  Future<void> _onUpdateHarga(
+      UpdateHarga event, Emitter<HargaState> emit,) async {
+    emit(HargaCreating());
+    try {
+      final response = await _client.dio.put('/harga/${event.id}', data: {
+        'harga_per_kg': event.hargaPerKg,
+        'tanggal': event.tanggal,
+      },);
+      if (response.statusCode == 200) {
+        emit(HargaUpdated());
+        add(LoadHargaList());
+      } else {
+        emit(HargaError('Gagal memperbarui data harga'));
+      }
+    } on DioException catch (e) {
+      emit(HargaError(e.response?.data is Map
+          ? e.response!.data['error'] ?? 'Gagal memperbarui harga'
+          : 'Gagal memperbarui harga',),);
+    }
+  }
+
+  Future<void> _onDeleteHarga(
+      DeleteHarga event, Emitter<HargaState> emit,) async {
+    emit(HargaCreating());
+    try {
+      final response = await _client.dio.delete('/harga/${event.id}');
+      if (response.statusCode == 200) {
+        emit(HargaDeleted());
+        add(LoadHargaList());
+      } else {
+        emit(HargaError('Gagal menghapus data harga'));
+      }
+    } on DioException catch (e) {
+      emit(HargaError(e.response?.data is Map
+          ? e.response!.data['error'] ?? 'Gagal menghapus harga'
+          : 'Gagal menghapus harga',),);
     }
   }
 }

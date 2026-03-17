@@ -73,7 +73,7 @@ class _StokPanganPageState extends State<StokPanganPage> {
                 else if (state is StokError)
                   SliverFillRemaining(child: _buildError((state).message))
                 else if (state is StokLoaded)
-                  _buildList(state)
+                  _buildList(state, canEdit)
                 else
                   const SliverFillRemaining(child: SizedBox()),
               ],
@@ -223,7 +223,7 @@ class _StokPanganPageState extends State<StokPanganPage> {
     );
   }
 
-  SliverList _buildList(StokLoaded state) {
+  SliverList _buildList(StokLoaded state, bool canEdit) {
     final byKec = _groupByKecamatan(state.items);
     final filtered = byKec.entries.where((e) {
       if (_selectedStatus == 'semua') return true;
@@ -250,13 +250,21 @@ class _StokPanganPageState extends State<StokPanganPage> {
 
     return SliverList(
       delegate: SliverChildBuilderDelegate(
-        (context, i) => _buildKecamatanCard(filtered[i].key, filtered[i].value),
+        (context, i) => _buildKecamatanCard(
+          filtered[i].key,
+          filtered[i].value,
+          canEdit,
+        ),
         childCount: filtered.length,
       ),
     );
   }
 
-  Widget _buildKecamatanCard(String kecamatanNama, List<StokItem> items) {
+  Widget _buildKecamatanCard(
+    String kecamatanNama,
+    List<StokItem> items,
+    bool canEdit,
+  ) {
     final worst = _worstStatus(items);
     final statusColor = _statusColor(worst);
 
@@ -314,14 +322,18 @@ class _StokPanganPageState extends State<StokPanganPage> {
           const Divider(height: 1),
           Padding(
             padding: const EdgeInsets.all(12),
-            child: Column(children: items.map(_buildKomoditasRow).toList()),
+            child: Column(
+              children: items
+                  .map((item) => _buildKomoditasRow(item, canEdit))
+                  .toList(),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildKomoditasRow(StokItem item) {
+  Widget _buildKomoditasRow(StokItem item, bool canEdit) {
     final color = _statusColor(item.statusStok);
     final fmt = NumberFormat('#,##0', 'id');
 
@@ -356,6 +368,44 @@ class _StokPanganPageState extends State<StokPanganPage> {
               minHeight: 6,
             ),
           ),
+          if (canEdit) ...[
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton.icon(
+                  onPressed: () => _showUpsertForm(context, item: item),
+                  icon: const Icon(
+                    Icons.edit_outlined,
+                    size: 15,
+                    color: Color(0xFF1976D2),
+                  ),
+                  label: const Text(
+                    'Edit',
+                    style: TextStyle(color: Color(0xFF1976D2), fontSize: 12),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: () => _confirmDeleteStok(context, item),
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    size: 15,
+                    color: Color(0xFFC62828),
+                  ),
+                  label: const Text(
+                    'Hapus',
+                    style: TextStyle(color: Color(0xFFC62828), fontSize: 12),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -428,21 +478,50 @@ class _StokPanganPageState extends State<StokPanganPage> {
     }
   }
 
-  void _showUpsertForm(BuildContext ctx) {
+  void _showUpsertForm(BuildContext ctx, {StokItem? item}) {
     showModalBottomSheet(
       context: ctx,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => BlocProvider.value(
         value: ctx.read<StokBloc>(),
-        child: const _UpsertStokSheet(),
+        child: _UpsertStokSheet(initialItem: item),
+      ),
+    );
+  }
+
+  void _confirmDeleteStok(BuildContext ctx, StokItem item) {
+    showDialog(
+      context: ctx,
+      builder: (_) => AlertDialog(
+        title: const Text('Hapus Data Stok?'),
+        content: Text('Hapus stok ${item.komoditasNama} di ${item.kecamatanNama}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              ctx.read<StokBloc>().add(DeleteStok(item.id));
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFC62828),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Hapus'),
+          ),
+        ],
       ),
     );
   }
 }
 
 class _UpsertStokSheet extends StatefulWidget {
-  const _UpsertStokSheet();
+  final StokItem? initialItem;
+
+  const _UpsertStokSheet({this.initialItem});
 
   @override
   State<_UpsertStokSheet> createState() => _UpsertStokSheetState();
@@ -461,6 +540,12 @@ class _UpsertStokSheetState extends State<_UpsertStokSheet> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialItem != null) {
+      _selKomoditas = widget.initialItem!.komoditasId;
+      _selKecamatan = widget.initialItem!.kecamatanId;
+      _stokCtrl.text = widget.initialItem!.stokKg.toStringAsFixed(0);
+      _kapasitasCtrl.text = widget.initialItem!.kapasitasKg.toStringAsFixed(0);
+    }
     _loadOptions();
   }
 
@@ -523,8 +608,8 @@ class _UpsertStokSheetState extends State<_UpsertStokSheet> {
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Update Data Stok',
+            Text(
+              widget.initialItem == null ? 'Update Data Stok' : 'Edit Data Stok',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 20),

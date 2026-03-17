@@ -21,4 +21,21 @@ class CreateHarga extends HargaEvent {
       required this.hargaPerKg, required this.tanggal,});
 }
 
+class UpdateHarga extends HargaEvent {
+  final String id;
+  final double hargaPerKg;
+  final String tanggal;
+
+  UpdateHarga({
+    required this.id,
+    required this.hargaPerKg,
+    required this.tanggal,
+  });
+}
+
+class DeleteHarga extends HargaEvent {
+  final String id;
+  DeleteHarga(this.id);
+}
+
 class RefreshHarga extends HargaEvent {}
