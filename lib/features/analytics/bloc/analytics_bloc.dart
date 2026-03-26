@@ -9,7 +9,7 @@ class AnalyticsBloc extends Bloc<AnalyticsEvent, AnalyticsState> {
 
   AnalyticsBloc(this._client) : super(AnalyticsInitial()) {
     on<LoadDashboardStats>(_onLoadDashboardStats);
-    on<RefreshDashboardStats>((_, __) => add(LoadDashboardStats()));
+    on<RefreshDashboardStats>((event, _) => add(LoadDashboardStats(periode: event.periode)));
     on<LoadStatusPangan>(_onLoadStatusPangan);
   }
 
@@ -19,7 +19,10 @@ class AnalyticsBloc extends Bloc<AnalyticsEvent, AnalyticsState> {
   ) async {
     emit(AnalyticsLoading());
     try {
-      final response = await _client.dio.get('/analytics/dashboard');
+      final response = await _client.dio.get(
+        '/analytics/dashboard',
+        queryParameters: {'periode': event.periode},
+      );
       if (response.statusCode == 200) {
         final stats =
             DashboardStats.fromJson(response.data as Map<String, dynamic>);

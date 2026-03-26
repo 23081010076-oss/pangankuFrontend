@@ -25,6 +25,7 @@ class LaporanPage extends StatefulWidget {
 class _LaporanPageState extends State<LaporanPage>
     with SingleTickerProviderStateMixin {
   late final TabController _tabCtrl;
+  String _periodeTren = 'Minggu';
 
   @override
   void initState() {
@@ -295,12 +296,37 @@ class _LaporanPageState extends State<LaporanPage>
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Tren Laporan 7 Hari Terakhir',
-                        style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF424242)),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Tren Laporan',
+                            style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF424242)),
+                          ),
+                          DropdownButton<String>(
+                            value: _periodeTren,
+                            isDense: true,
+                            underline: const SizedBox(),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF2E7D32),
+                            ),
+                            icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF2E7D32), size: 20),
+                            items: ['Minggu', 'Bulan', 'Tahun']
+                                .map((e) => DropdownMenuItem(
+                                      value: e,
+                                      child: Text('Per $e'),
+                                    ))
+                                .toList(),
+                            onChanged: (v) {
+                              if (v != null) setState(() => _periodeTren = v);
+                            },
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 12),
                       _buildTrenChart(items),
@@ -322,33 +348,66 @@ class _LaporanPageState extends State<LaporanPage>
   // ── Line Chart ─────────────────────────────────────────────
   Widget _buildTrenChart(List<LaporanItem> items) {
     final now = DateTime.now();
-    final days = List.generate(7, (i) {
-      final d = now.subtract(Duration(days: 6 - i));
-      return DateTime(d.year, d.month, d.day);
-    });
-    final baruCounts = List<double>.filled(7, 0);
-    final prosesCounts = List<double>.filled(7, 0);
-    final selesaiCounts = List<double>.filled(7, 0);
+    int count = 7;
+    List<DateTime> ranges = [];
+    List<String> labels = [];
+
+    if (_periodeTren == 'Minggu') {
+      count = 7;
+      for (int i = 0; i < count; i++) {
+        final d = now.subtract(Duration(days: 6 - i));
+        ranges.add(DateTime(d.year, d.month, d.day));
+        labels.add(DateFormat('dd/MM').format(d));
+      }
+    } else if (_periodeTren == 'Bulan') {
+      count = 4;
+      for (int i = 0; i < count; i++) {
+        final d = now.subtract(Duration(days: (3 - i) * 7));
+        ranges.add(DateTime(d.year, d.month, d.day));
+        labels.add('M${i+1}');
+      }
+    } else if (_periodeTren == 'Tahun') {
+      count = 6;
+      for (int i = 0; i < count; i++) {
+        final d = DateTime(now.year, now.month - (count - 1 - i), 1);
+        ranges.add(DateTime(d.year, d.month, 1));
+        labels.add(DateFormat('MMM').format(d));
+      }
+    }
+
+    final baruCounts = List<double>.filled(count, 0);
+    final prosesCounts = List<double>.filled(count, 0);
+    final selesaiCounts = List<double>.filled(count, 0);
 
     for (final item in items) {
       final tanggal = DateTime.tryParse(item.tanggal);
       if (tanggal == null) continue;
-      final dayOnly = DateTime(tanggal.year, tanggal.month, tanggal.day);
-      for (int i = 0; i < days.length; i++) {
-        if (dayOnly == days[i]) {
-          if (item.status == 'baru') {
-            baruCounts[i]++;
-          } else if (item.status == 'proses') {
-            prosesCounts[i]++;
-          } else if (item.status == 'selesai') {
-            selesaiCounts[i]++;
-          }
-          break;
+      
+      int index = -1;
+      if (_periodeTren == 'Minggu') {
+        final dayOnly = DateTime(tanggal.year, tanggal.month, tanggal.day);
+        index = ranges.indexWhere((d) => d == dayOnly);
+      } else if (_periodeTren == 'Bulan') {
+        final diff = now.difference(tanggal).inDays;
+        if (diff >= 0 && diff < 28) {
+          int weekDiff = diff ~/ 7;
+          index = 3 - weekDiff; 
         }
+      } else if (_periodeTren == 'Tahun') {
+        for(int i = 0; i < count; i++) {
+           if(tanggal.year == ranges[i].year && tanggal.month == ranges[i].month) {
+             index = i; break;
+           }
+        }
+      }
+
+      if (index != -1 && index >= 0 && index < count) {
+        if (item.status == 'baru') baruCounts[index]++;
+        else if (item.status == 'proses') prosesCounts[index]++;
+        else if (item.status == 'selesai') selesaiCounts[index]++;
       }
     }
 
-    final labels = days.map((d) => DateFormat('dd/MM').format(d)).toList();
     final allValues = [...baruCounts, ...prosesCounts, ...selesaiCounts];
     final maxY = allValues.fold(0.0, (a, b) => a > b ? a : b);
 
@@ -444,11 +503,12 @@ class _LaporanPageState extends State<LaporanPage>
                 lineBarsData: [
                   LineChartBarData(
                     spots: List.generate(
-                      7,
+                      count,
                       (i) => FlSpot(i.toDouble(), baruCounts[i]),
                     ),
                     color: const Color(0xFFC62828),
                     isCurved: true,
+                    preventCurveOverShooting: true,
                     barWidth: 2.5,
                     dotData: const FlDotData(show: false),
                     belowBarData: BarAreaData(
@@ -458,11 +518,12 @@ class _LaporanPageState extends State<LaporanPage>
                   ),
                   LineChartBarData(
                     spots: List.generate(
-                      7,
+                      count,
                       (i) => FlSpot(i.toDouble(), prosesCounts[i]),
                     ),
                     color: const Color(0xFFF57C00),
                     isCurved: true,
+                    preventCurveOverShooting: true,
                     barWidth: 2.5,
                     dotData: const FlDotData(show: false),
                     belowBarData: BarAreaData(
@@ -472,11 +533,12 @@ class _LaporanPageState extends State<LaporanPage>
                   ),
                   LineChartBarData(
                     spots: List.generate(
-                      7,
+                      count,
                       (i) => FlSpot(i.toDouble(), selesaiCounts[i]),
                     ),
                     color: const Color(0xFF2E7D32),
                     isCurved: true,
+                    preventCurveOverShooting: true,
                     barWidth: 2.5,
                     dotData: const FlDotData(show: false),
                     belowBarData: BarAreaData(
@@ -518,7 +580,7 @@ class _LaporanPageState extends State<LaporanPage>
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton.icon(
-        onPressed: () => _exportToPdf(stats, laporan),
+        onPressed: () => _exportToPdf(stats, laporan, _periodeTren),
         icon: const Icon(
           Icons.print_outlined,
           color: Color(0xFF2E7D32),
@@ -546,6 +608,7 @@ class _LaporanPageState extends State<LaporanPage>
   Future<void> _exportToPdf(
     DashboardStats stats,
     List<LaporanItem> laporan,
+    String periodeTren,
   ) async {
     final font = await PdfGoogleFonts.notoSansRegular();
     final boldFont = await PdfGoogleFonts.notoSansBold();
@@ -558,65 +621,70 @@ class _LaporanPageState extends State<LaporanPage>
     final headerBg = PdfColor(46 / 255, 125 / 255, 50 / 255);
     final accentBlue = PdfColor(25 / 255, 118 / 255, 210 / 255);
 
-    String formatRupiah(double value) {
-      return 'Rp ${NumberFormat('#,###', 'id').format(value.round())}';
+    int count = 7;
+    List<DateTime> ranges = [];
+    List<String> labels = [];
+
+    if (periodeTren == 'Minggu') {
+      count = 7;
+      for (int i = 0; i < count; i++) {
+        final d = now.subtract(Duration(days: 6 - i));
+        ranges.add(DateTime(d.year, d.month, d.day));
+        labels.add(DateFormat('dd/MM').format(d));
+      }
+    } else if (periodeTren == 'Bulan') {
+      count = 4;
+      for (int i = 0; i < count; i++) {
+        final d = now.subtract(Duration(days: (3 - i) * 7));
+        ranges.add(DateTime(d.year, d.month, d.day));
+        labels.add('M${i+1}');
+      }
+    } else if (periodeTren == 'Tahun') {
+      count = 6;
+      for (int i = 0; i < count; i++) {
+        final d = DateTime(now.year, now.month - (count - 1 - i), 1);
+        ranges.add(d);
+        labels.add(DateFormat('MMM').format(d));
+      }
     }
 
-    List<String> trendHeaders = ['Komoditas', 'Rata-rata', 'Min', 'Max', 'H-0'];
-    List<List<String>> trendRows = [
-      [
-        'Beras',
-        formatRupiah(stats.avgHargaBeras),
-        formatRupiah(stats.harga7HariBeras.isEmpty
-            ? 0
-            : stats.harga7HariBeras.reduce((a, b) => a < b ? a : b)),
-        formatRupiah(stats.harga7HariBeras.isEmpty
-            ? 0
-            : stats.harga7HariBeras.reduce((a, b) => a > b ? a : b)),
-        formatRupiah(stats.harga7HariBeras.isEmpty
-            ? 0
-            : stats.harga7HariBeras.last),
-      ],
-      [
-        'Jagung',
-        formatRupiah(stats.avgHargaJagung),
-        formatRupiah(stats.harga7HariJagung.isEmpty
-            ? 0
-            : stats.harga7HariJagung.reduce((a, b) => a < b ? a : b)),
-        formatRupiah(stats.harga7HariJagung.isEmpty
-            ? 0
-            : stats.harga7HariJagung.reduce((a, b) => a > b ? a : b)),
-        formatRupiah(stats.harga7HariJagung.isEmpty
-            ? 0
-            : stats.harga7HariJagung.last),
-      ],
-      [
-        'Kedelai',
-        formatRupiah(stats.avgHargaKedelai),
-        formatRupiah(stats.harga7HariKedelai.isEmpty
-            ? 0
-            : stats.harga7HariKedelai.reduce((a, b) => a < b ? a : b)),
-        formatRupiah(stats.harga7HariKedelai.isEmpty
-            ? 0
-            : stats.harga7HariKedelai.reduce((a, b) => a > b ? a : b)),
-        formatRupiah(stats.harga7HariKedelai.isEmpty
-            ? 0
-            : stats.harga7HariKedelai.last),
-      ],
-      [
-        'Cabai',
-        formatRupiah(stats.avgHargaCabai),
-        formatRupiah(stats.harga7HariCabai.isEmpty
-            ? 0
-            : stats.harga7HariCabai.reduce((a, b) => a < b ? a : b)),
-        formatRupiah(stats.harga7HariCabai.isEmpty
-            ? 0
-            : stats.harga7HariCabai.reduce((a, b) => a > b ? a : b)),
-        formatRupiah(stats.harga7HariCabai.isEmpty
-            ? 0
-            : stats.harga7HariCabai.last),
-      ],
-    ];
+    final baruCounts = List<double>.filled(count, 0);
+    final prosesCounts = List<double>.filled(count, 0);
+    final selesaiCounts = List<double>.filled(count, 0);
+
+    for (final item in laporan) {
+      final tanggal = DateTime.tryParse(item.tanggal);
+      if (tanggal == null) continue;
+      
+      int index = -1;
+      if (periodeTren == 'Minggu') {
+        final dayOnly = DateTime(tanggal.year, tanggal.month, tanggal.day);
+        index = ranges.indexWhere((d) => d == dayOnly);
+      } else if (periodeTren == 'Bulan') {
+        final diff = now.difference(tanggal).inDays;
+        if (diff >= 0 && diff < 28) {
+          int weekDiff = diff ~/ 7;
+          index = 3 - weekDiff; 
+        }
+      } else if (periodeTren == 'Tahun') {
+        for(int i = 0; i < count; i++) {
+           if(tanggal.year == ranges[i].year && tanggal.month == ranges[i].month) {
+             index = i; break;
+           }
+        }
+      }
+
+      if (index != -1 && index >= 0 && index < count) {
+        if (item.status == 'baru') baruCounts[index]++;
+        else if (item.status == 'proses') prosesCounts[index]++;
+        else if (item.status == 'selesai') selesaiCounts[index]++;
+      }
+    }
+
+    List<List<String>> trendRows = [];
+    for(int i=0; i<count; i++) {
+        trendRows.add([labels[i], baruCounts[i].toInt().toString(), prosesCounts[i].toInt().toString(), selesaiCounts[i].toInt().toString()]);
+    }
 
     doc.addPage(
       pw.MultiPage(
@@ -664,15 +732,10 @@ class _LaporanPageState extends State<LaporanPage>
           pw.TableHelper.fromTextArray(
             headers: ['Indikator', 'Nilai'],
             data: [
-              ['Total Komoditas', '${stats.totalKomoditas}'],
-              ['Alert Aktif', '${stats.alertCount}'],
-              ['Distribusi Aktif', '${stats.distribusiAktif}'],
-              ['Laporan Bulan Ini', '${stats.laporanBulanIni}'],
-              ['Update Hari Ini', '${stats.updateHariIni}'],
-              [
-                'Harga Rata-rata Beras',
-                'Rp ${NumberFormat('#,###').format(stats.avgHargaBeras)}/kg',
-              ],
+              ['Total Laporan Bulan Ini', '${stats.laporanBulanIni}'],
+              ['Kecamatan Aman', '${stats.kecamatanAman}'],
+              ['Kecamatan Waspada', '${stats.kecamatanWaspada}'],
+              ['Kecamatan Kritis', '${stats.kecamatanKritis}'],
             ],
             headerStyle: pw.TextStyle(
               fontWeight: pw.FontWeight.bold,
@@ -688,7 +751,7 @@ class _LaporanPageState extends State<LaporanPage>
           ),
           pw.SizedBox(height: 16),
           pw.Text(
-            'Status Kecamatan',
+            'Tren Laporan per $periodeTren',
             style: pw.TextStyle(
               fontSize: 12,
               fontWeight: pw.FontWeight.bold,
@@ -696,35 +759,7 @@ class _LaporanPageState extends State<LaporanPage>
           ),
           pw.SizedBox(height: 8),
           pw.TableHelper.fromTextArray(
-            headers: ['Status', 'Jumlah Kecamatan'],
-            data: [
-              ['Aman', '${stats.kecamatanAman}'],
-              ['Waspada', '${stats.kecamatanWaspada}'],
-              ['Kritis', '${stats.kecamatanKritis}'],
-            ],
-            headerStyle: pw.TextStyle(
-              fontWeight: pw.FontWeight.bold,
-              color: PdfColors.white,
-            ),
-            headerDecoration: pw.BoxDecoration(color: headerBg),
-            border: pw.TableBorder.all(),
-            cellAlignments: {
-              0: pw.Alignment.centerLeft,
-              1: pw.Alignment.centerRight,
-            },
-            cellHeight: 22,
-          ),
-          pw.SizedBox(height: 16),
-          pw.Text(
-            'Tren Harga 7 Hari (Data)',
-            style: pw.TextStyle(
-              fontSize: 12,
-              fontWeight: pw.FontWeight.bold,
-            ),
-          ),
-          pw.SizedBox(height: 8),
-          pw.TableHelper.fromTextArray(
-            headers: trendHeaders,
+            headers: ['Periode', 'Baru', 'Proses', 'Selesai'],
             data: trendRows,
             headerStyle: pw.TextStyle(
               fontWeight: pw.FontWeight.bold,
@@ -732,6 +767,12 @@ class _LaporanPageState extends State<LaporanPage>
             ),
             headerDecoration: pw.BoxDecoration(color: accentBlue),
             border: pw.TableBorder.all(color: PdfColors.grey400),
+            cellAlignments: {
+              0: pw.Alignment.centerLeft,
+              1: pw.Alignment.center,
+              2: pw.Alignment.center,
+              3: pw.Alignment.center,
+            },
             cellStyle: const pw.TextStyle(fontSize: 9),
             cellHeight: 20,
           ),
@@ -768,7 +809,7 @@ class _LaporanPageState extends State<LaporanPage>
                 return [
                   '${e.key + 1}',
                   item.jenisMasalah,
-                  item.kecamatanNama,
+                  item.kecamatanNama ?? '-',
                   item.status.toUpperCase(),
                   '${item.prioritas}',
                   tgl != null ? DateFormat('dd/MM/yy').format(tgl) : '-',
@@ -796,10 +837,7 @@ class _LaporanPageState extends State<LaporanPage>
             alignment: pw.Alignment.centerRight,
             child: pw.Text(
               'Dicetak pada: $dateStr',
-              style: const pw.TextStyle(
-                fontSize: 8,
-                color: PdfColors.grey,
-              ),
+              style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey),
             ),
           ),
         ],
@@ -926,82 +964,77 @@ class _LaporanPageState extends State<LaporanPage>
   }
 
   Widget _statusBar(int aman, int waspada, int kritis) {
-    final total = aman + waspada + kritis;
-    if (total == 0) return const SizedBox();
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                flex: aman,
-                child: Container(
-                  height: 12,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF2E7D32),
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(6),
-                      bottomLeft: Radius.circular(6),
-                    ),
+    if (aman + waspada + kritis == 0) return const SizedBox();
+    final cards = [
+      {
+        'label': 'Aman',
+        'value': aman.toString(),
+        'color': const Color(0xFF2E7D32),
+        'bg': const Color(0xFFE8F5E9),
+        'icon': Icons.check_circle_outline,
+      },
+      {
+        'label': 'Waspada',
+        'value': waspada.toString(),
+        'color': const Color(0xFFF57C00),
+        'bg': const Color(0xFFFFF3E0),
+        'icon': Icons.warning_amber_outlined,
+      },
+      {
+        'label': 'Kritis',
+        'value': kritis.toString(),
+        'color': const Color(0xFFC62828),
+        'bg': const Color(0xFFFFEBEE),
+        'icon': Icons.error_outline,
+      },
+    ];
+    return Row(
+      children: cards.map((c) {
+        return Expanded(
+          child: Container(
+            margin: EdgeInsets.only(right: cards.indexOf(c) < 2 ? 10 : 0),
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: (c['bg'] as Color), width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                Icon(
+                  c['icon'] as IconData,
+                  size: 22,
+                  color: c['color'] as Color,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  c['value'] as String,
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: c['color'] as Color,
                   ),
                 ),
-              ),
-              Expanded(
-                flex: waspada,
-                child: Container(
-                  height: 12,
-                  color: const Color(0xFFF57C00),
-                ),
-              ),
-              Expanded(
-                flex: kritis,
-                child: Container(
-                  height: 12,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFC62828),
-                    borderRadius: BorderRadius.only(
-                      topRight: Radius.circular(6),
-                      bottomRight: Radius.circular(6),
-                    ),
+                Text(
+                  c['label'] as String,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey,
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _legendDot('\u2022 $aman Aman', const Color(0xFF2E7D32)),
-              _legendDot('\u2022 $waspada Waspada', const Color(0xFFF57C00)),
-              _legendDot('\u2022 $kritis Kritis', const Color(0xFFC62828)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _legendDot(String text, Color color) {
-    return Text(
-      text,
-      style: TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-        color: color,
-      ),
+        );
+      }).toList(),
     );
   }
 

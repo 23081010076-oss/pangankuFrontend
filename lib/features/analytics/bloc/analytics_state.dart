@@ -1,4 +1,7 @@
 class DashboardStats {
+  final String periode;
+  final List<String> tanggalLabels;
+  final List<ActiveAlert> activeAlerts;
   final int totalKomoditas;
   final int alertCount;
   final int updateHariIni;
@@ -21,6 +24,9 @@ class DashboardStats {
   final int laporanBulanIni;
 
   const DashboardStats({
+    required this.periode,
+    required this.tanggalLabels,
+    required this.activeAlerts,
     required this.totalKomoditas,
     required this.alertCount,
     required this.updateHariIni,
@@ -48,28 +54,79 @@ class DashboardStats {
     return List<double>.from((raw as List).map((e) => (e as num).toDouble()));
   }
 
+  static List<String> _parseStringList(dynamic raw) {
+    if (raw == null) return const [];
+    return List<String>.from((raw as List).map((e) => e.toString()));
+  }
+
+  static List<String> _fallbackLabels(int length) {
+    return List<String>.generate(length, (i) => 'H${i + 1}');
+  }
+
+  static List<ActiveAlert> _parseActiveAlerts(dynamic raw) {
+    if (raw == null) return const [];
+    return List<ActiveAlert>.from(
+      (raw as List).map((e) => ActiveAlert.fromJson(e as Map<String, dynamic>)),
+    );
+  }
+
   factory DashboardStats.fromJson(Map<String, dynamic> json) {
+    final berasData = _parseDoubleList(json['harga_7hari_beras']);
+    final labels = _parseStringList(json['tanggal_labels']);
+
     return DashboardStats(
-      totalKomoditas: (json['total_komoditas'] ?? 0) as int,
-      alertCount: (json['alert_count'] ?? 0) as int,
-      updateHariIni: (json['update_hari_ini'] ?? 0) as int,
-      kecamatanAman: (json['kecamatan_aman'] ?? 0) as int,
-      kecamatanWaspada: (json['kecamatan_waspada'] ?? 0) as int,
-      kecamatanKritis: (json['kecamatan_kritis'] ?? 0) as int,
+      periode: json['periode']?.toString() ?? '7d',
+      tanggalLabels: labels.isEmpty ? _fallbackLabels(berasData.length) : labels,
+      activeAlerts: _parseActiveAlerts(json['active_alerts']),
+      totalKomoditas: (json['total_komoditas'] as num?)?.toInt() ?? 0,
+      alertCount: (json['alert_count'] as num?)?.toInt() ?? 0,
+      updateHariIni: (json['update_hari_ini'] as num?)?.toInt() ?? 0,
+      kecamatanAman: (json['kecamatan_aman'] as num?)?.toInt() ?? 0,
+      kecamatanWaspada: (json['kecamatan_waspada'] as num?)?.toInt() ?? 0,
+      kecamatanKritis: (json['kecamatan_kritis'] as num?)?.toInt() ?? 0,
       avgHargaBeras: (json['avg_harga_beras'] ?? 0).toDouble(),
       avgHargaJagung: (json['avg_harga_jagung'] ?? 0).toDouble(),
       avgHargaKedelai: (json['avg_harga_kedelai'] ?? 0).toDouble(),
       avgHargaCabai: (json['avg_harga_cabai'] ?? 0).toDouble(),
       avgHargaGula: (json['avg_harga_gula'] ?? 0).toDouble(),
       avgHargaMinyak: (json['avg_harga_minyak'] ?? 0).toDouble(),
-      harga7HariBeras: _parseDoubleList(json['harga_7hari_beras']),
+      harga7HariBeras: berasData,
       harga7HariJagung: _parseDoubleList(json['harga_7hari_jagung']),
       harga7HariKedelai: _parseDoubleList(json['harga_7hari_kedelai']),
       harga7HariCabai: _parseDoubleList(json['harga_7hari_cabai']),
       harga7HariGula: _parseDoubleList(json['harga_7hari_gula']),
       harga7HariMinyak: _parseDoubleList(json['harga_7hari_minyak']),
-      distribusiAktif: (json['distribusi_aktif'] ?? 0) as int,
-      laporanBulanIni: (json['laporan_bulan_ini'] ?? 0) as int,
+      distribusiAktif: (json['distribusi_aktif'] as num?)?.toInt() ?? 0,
+      laporanBulanIni: (json['laporan_bulan_ini'] as num?)?.toInt() ?? 0,
+    );
+  }
+}
+
+class ActiveAlert {
+  final String id;
+  final String jenisMasalah;
+  final String kecamatanNama;
+  final String status;
+  final int prioritas;
+  final DateTime? createdAt;
+
+  const ActiveAlert({
+    required this.id,
+    required this.jenisMasalah,
+    required this.kecamatanNama,
+    required this.status,
+    required this.prioritas,
+    required this.createdAt,
+  });
+
+  factory ActiveAlert.fromJson(Map<String, dynamic> json) {
+    return ActiveAlert(
+      id: json['id']?.toString() ?? '',
+      jenisMasalah: json['jenis_masalah']?.toString() ?? 'Laporan Darurat',
+      kecamatanNama: json['kecamatan_nama']?.toString() ?? '-',
+      status: json['status']?.toString() ?? 'baru',
+      prioritas: (json['prioritas'] as num?)?.toInt() ?? 3,
+      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? ''),
     );
   }
 }

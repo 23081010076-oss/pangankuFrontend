@@ -29,7 +29,6 @@ class _ForecastPageState extends State<ForecastPage> {
   // Forecast result
   List<double> _predictions = [];
   String _trend = '';
-  List<int> _anomalyIndexes = [];
 
   @override
   void initState() {
@@ -96,7 +95,7 @@ class _ForecastPageState extends State<ForecastPage> {
           (data['predictions'] as List).map((v) => (v as num).toDouble()),
         );
         _trend = data['trend'] as String? ?? '';
-        _anomalyIndexes = List<int>.from(data['anomaly_indexes'] ?? []);
+
         _loadingForecast = false;
       });
     } on DioException catch (e) {
@@ -338,7 +337,7 @@ class _ForecastPageState extends State<ForecastPage> {
                         style:
                             TextStyle(fontSize: 11, color: Colors.grey[600])),
                     Text(
-                      '${_selectedKomoditasNama.isNotEmpty ? _selectedKomoditasNama : "Komoditas"} — $label',
+                      ' — ',
                       style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
@@ -350,31 +349,6 @@ class _ForecastPageState extends State<ForecastPage> {
             ),
           ),
         ),
-        if (_anomalyIndexes.isNotEmpty) ...[
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.orange.withOpacity(0.4)),
-            ),
-            child: Column(
-              children: [
-                const Icon(Icons.warning_amber_rounded,
-                    color: Colors.orange, size: 22),
-                const SizedBox(height: 2),
-                Text(
-                  '${_anomalyIndexes.length} anomali',
-                  style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.orange),
-                ),
-              ],
-            ),
-          ),
-        ],
       ],
     );
   }
@@ -420,26 +394,43 @@ class _ForecastPageState extends State<ForecastPage> {
                 maxY: maxY,
                 gridData: FlGridData(
                   show: true,
-                  horizontalInterval: (maxY - minY) / 4,
                   getDrawingHorizontalLine: (_) => FlLine(
-                      color: Colors.grey.withOpacity(0.15), strokeWidth: 1),
-                  drawVerticalLine: false,
+                    color: Colors.grey.withOpacity(0.15),
+                    strokeWidth: 1,
+                    dashArray: [4, 4],
+                  ),
+                  drawVerticalLine: true,
+                  getDrawingVerticalLine: (_) => FlLine(
+                    color: Colors.grey.withOpacity(0.15),
+                    strokeWidth: 1,
+                    dashArray: [4, 4],
+                  ),
                 ),
                 borderData: FlBorderData(show: false),
                 titlesData: FlTitlesData(
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      reservedSize: 52,
-                      getTitlesWidget: (value, meta) => Text(
-                        '${(value / 1000).toStringAsFixed(0)}rb',
-                        style: TextStyle(fontSize: 10, color: Colors.grey[500]),
-                      ),
+                      reservedSize: 42,
+                      getTitlesWidget: (value, meta) {
+                        if (value == meta.max || value == meta.min) {
+                          return const SizedBox.shrink();
+                        }
+                        return Text(
+                          'rb',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey[500],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        );
+                      },
                     ),
                   ),
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
+                      interval: 1,
                       getTitlesWidget: (value, meta) {
                         final day = DateTime.now()
                             .add(Duration(days: value.toInt() + 1));
@@ -463,44 +454,69 @@ class _ForecastPageState extends State<ForecastPage> {
                   LineChartBarData(
                     spots: spots,
                     isCurved: true,
+                    preventCurveOverShooting: true,
                     color: const Color(0xFF2E7D32),
-                    barWidth: 2.5,
+                    barWidth: 3,
+                    isStrokeCapRound: true,
+                    shadow: BoxShadow(
+                      color: const Color(0xFF2E7D32).withOpacity(0.3),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
                     dotData: FlDotData(
                       show: true,
                       getDotPainter: (spot, _, __, index) {
-                        final isAnomaly = _anomalyIndexes.contains(index);
                         return FlDotCirclePainter(
-                          radius: isAnomaly ? 5 : 3.5,
-                          color: isAnomaly
-                              ? Colors.orange
-                              : const Color(0xFF2E7D32),
-                          strokeWidth: isAnomaly ? 2 : 0,
-                          strokeColor: Colors.white,
+                          radius: 3.5,
+                          color: Colors.white,
+                          strokeWidth: 2,
+                          strokeColor: const Color(0xFF2E7D32),
                         );
                       },
                     ),
                     belowBarData: BarAreaData(
                       show: true,
-                      color: const Color(0xFF2E7D32).withOpacity(0.08),
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          const Color(0xFF2E7D32).withOpacity(0.35),
+                          const Color(0xFF2E7D32).withOpacity(0.0),
+                        ],
+                      ),
                     ),
                   ),
                 ],
                 lineTouchData: LineTouchData(
+                  handleBuiltInTouches: true,
                   touchTooltipData: LineTouchTooltipData(
+                    getTooltipColor: (_) =>
+                        const Color(0xFF1E293B).withOpacity(0.9),
+                    tooltipRoundedRadius: 8,
+                    fitInsideHorizontally: true,
+                    tooltipBorder:
+                        const BorderSide(color: Colors.white24, width: 1),
                     getTooltipItems: (touchedSpots) {
                       return touchedSpots.map((spot) {
                         final day = DateTime.now()
                             .add(Duration(days: spot.spotIndex + 1));
-                        final isAnomaly =
-                            _anomalyIndexes.contains(spot.spotIndex);
                         return LineTooltipItem(
-                          '${DateFormat('dd MMM', 'id').format(day)}\nRp ${_currencyFmt.format(spot.y)}'
-                          '${isAnomaly ? '\n⚠ Anomali' : ''}',
-                          TextStyle(
-                            fontSize: 11,
-                            color: isAnomaly ? Colors.orange : Colors.white,
-                            fontWeight: FontWeight.w600,
+                          '\n',
+                          const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
                           ),
+                          children: [
+                            TextSpan(
+                              text: 'Rp ',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
                         );
                       }).toList();
                     },
@@ -509,24 +525,6 @@ class _ForecastPageState extends State<ForecastPage> {
               ),
             ),
           ),
-          if (_anomalyIndexes.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 0, 4),
-              child: Row(
-                children: [
-                  Container(
-                      width: 10,
-                      height: 10,
-                      decoration: const BoxDecoration(
-                          color: Colors.orange, shape: BoxShape.circle)),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Titik oranye = prediksi anomali',
-                    style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-                  ),
-                ],
-              ),
-            ),
         ],
       ),
     );
@@ -599,13 +597,11 @@ class _ForecastPageState extends State<ForecastPage> {
           ),
           ...List.generate(_predictions.length, (i) {
             final day = DateTime.now().add(Duration(days: i + 1));
-            final isAnomaly = _anomalyIndexes.contains(i);
+
             return Column(
               children: [
                 Container(
-                  color: isAnomaly
-                      ? Colors.orange.withOpacity(0.04)
-                      : Colors.transparent,
+                  color: Colors.transparent,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   child: Row(
@@ -624,31 +620,14 @@ class _ForecastPageState extends State<ForecastPage> {
                           style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: isAnomaly
-                                  ? Colors.orange[700]
-                                  : const Color(0xFF1B5E20)),
+                              color: const Color(0xFF1B5E20)),
                           textAlign: TextAlign.right,
                         ),
                       ),
                       Expanded(
                         flex: 2,
                         child: Center(
-                          child: isAnomaly
-                              ? Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.orange.withOpacity(0.12),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: const Text('Anomali',
-                                      style: TextStyle(
-                                          fontSize: 10,
-                                          color: Colors.orange,
-                                          fontWeight: FontWeight.w600)),
-                                )
-                              : const Icon(Icons.check_circle,
-                                  size: 16, color: Color(0xFF4CAF50)),
+                          child: const Icon(Icons.check_circle, size: 16, color: Color(0xFF4CAF50)),
                         ),
                       ),
                     ],

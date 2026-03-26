@@ -67,16 +67,22 @@ class HargaItem {
   });
 
   factory HargaItem.fromJson(Map<String, dynamic> json, {String kategori = ''}) {
+    String normalizeUuid(dynamic raw) {
+      final v = raw?.toString() ?? '';
+      if (v == '00000000-0000-0000-0000-000000000000') return '';
+      return v;
+    }
+
     return HargaItem(
-      id: json['id']?.toString() ?? '',
-      komoditasId: json['komoditas_id']?.toString() ?? '',
+      id: normalizeUuid(json['id']),
+      komoditasId: normalizeUuid(json['komoditas_id']),
       komoditasNama: json['komoditas_nama']?.toString() ??
           (json['Komoditas'] as Map?)?['nama']?.toString() ?? '',
       kategori: json['kategori']?.toString().isNotEmpty == true
           ? json['kategori'].toString()
           : kategori,
       harga: (json['harga_per_kg'] ?? json['harga'] ?? 0).toDouble(),
-      kecamatanId: json['kecamatan_id']?.toString() ?? '',
+      kecamatanId: normalizeUuid(json['kecamatan_id']),
       kecamatanNama: json['kecamatan_nama']?.toString() ??
           (json['Kecamatan'] as Map?)?['nama']?.toString() ?? '',
       tanggal: json['tanggal']?.toString() ?? '',

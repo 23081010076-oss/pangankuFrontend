@@ -1,8 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:intl/intl.dart';
-import '../../../core/network/dio_client.dart';
 import '../bloc/analytics_bloc.dart';
 import '../bloc/analytics_event.dart';
 import '../bloc/analytics_state.dart';
@@ -17,6 +17,22 @@ class AnalyticsPage extends StatefulWidget {
 class _AnalyticsPageState extends State<AnalyticsPage>
     with SingleTickerProviderStateMixin {
   late final TabController _tabCtrl;
+  int _selectedKomoditasIdx = 0;
+
+  static const Map<String, String> _periodeOptions = {
+    '7d': '7 Hari',
+    '30d': '30 Hari',
+    '90d': '90 Hari',
+  };
+
+  static const _komoditas = [
+    {'nama': 'Beras', 'emoji': '🌾', 'color': Color(0xFF2E7D32)},
+    {'nama': 'Jagung', 'emoji': '🌽', 'color': Color(0xFFF9A825)},
+    {'nama': 'Kedelai', 'emoji': '🫘', 'color': Color(0xFF795548)},
+    {'nama': 'Cabai', 'emoji': '🌶️', 'color': Color(0xFFC62828)},
+    {'nama': 'Gula', 'emoji': '🍚', 'color': Color(0xFF1976D2)},
+    {'nama': 'Minyak', 'emoji': '🫙', 'color': Color(0xFFF57C00)},
+  ];
 
   @override
   void initState() {
@@ -162,22 +178,89 @@ class _AnalyticsPageState extends State<AnalyticsPage>
     return RefreshIndicator(
       color: const Color(0xFF2E7D32),
       onRefresh: () async =>
-          context.read<AnalyticsBloc>().add(LoadDashboardStats()),
+          context.read<AnalyticsBloc>().add(LoadDashboardStats(periode: s.periode)),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _chartSectionTitle('Grafik KPI Operasional'),
+          _buildInsightBanner(s),
+          const SizedBox(height: 14),
+          _buildRingkasanCards(s),
           const SizedBox(height: 10),
-          _buildKpiChart(s),
+          _buildStatusSummaryStrip(s),
           const SizedBox(height: 20),
-          _chartSectionTitle('Grafik Komposisi Status Kecamatan'),
+          _buildTrendHargaCard(s),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInsightBanner(DashboardStats s) {
+    final totalKecamatan =
+        (s.kecamatanAman + s.kecamatanWaspada + s.kecamatanKritis).toDouble();
+    final amanPct =
+        totalKecamatan == 0 ? 0.0 : (s.kecamatanAman / totalKecamatan) * 100;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF154D1A), Color(0xFF2E7D32)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.green.withOpacity(0.22),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.insights_outlined, color: Colors.white, size: 18),
+              const SizedBox(width: 6),
+              const Expanded(
+                child: Text(
+                  'Ringkasan Kondisi Hari Ini',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.18),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '${amanPct.toStringAsFixed(0)}% aman',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 10),
-          _buildStatusCompositionChart(s),
-          const SizedBox(height: 20),
-          _chartSectionTitle('Grafik Tren Harga 7 Hari'),
-          const SizedBox(height: 10),
-          _buildPriceTrendChart(s),
-          const SizedBox(height: 20),
+          Text(
+            'Laporan aktif: ${s.alertCount} • Update data hari ini: ${s.updateHariIni}',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.9),
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );
@@ -213,267 +296,591 @@ class _AnalyticsPageState extends State<AnalyticsPage>
     );
   }
 
-  Widget _buildKpiChart(DashboardStats s) {
-    final values = [
-      s.totalKomoditas.toDouble(),
-      s.alertCount.toDouble(),
-      s.updateHariIni.toDouble(),
-      s.distribusiAktif.toDouble(),
-      s.laporanBulanIni.toDouble(),
-    ];
-    final labels = ['Komoditas', 'Alert', 'Update', 'Distribusi', 'Laporan'];
-    final maxY = (values.reduce((a, b) => a > b ? a : b) * 1.3).clamp(5, 1000);
-    final barColors = const [
-      Color(0xFF2E7D32),
-      Color(0xFFF57C00),
-      Color(0xFF1976D2),
-      Color(0xFF6A1B9A),
-      Color(0xFFC62828),
+  Widget _buildRingkasanCards(DashboardStats s) {
+    final cards = [
+      {
+        'label': 'Total Komoditas',
+        'value': s.totalKomoditas.toString(),
+        'color': const Color(0xFF00897B),
+        'bg': const Color(0xFFEAF7EC),
+        'icon': Icons.inventory_2_outlined,
+      },
+      {
+        'label': 'Update Hari Ini',
+        'value': s.updateHariIni.toString(),
+        'color': const Color(0xFF1565C0),
+        'bg': const Color(0xFFFFF5E8),
+        'icon': Icons.update_outlined,
+      },
+      {
+        'label': 'Distribusi Aktif',
+        'value': s.distribusiAktif.toString(),
+        'color': const Color(0xFF6A1B9A),
+        'bg': const Color(0xFFFFEEF0),
+        'icon': Icons.local_shipping_outlined,
+      },
+      {
+        'label': 'Laporan Bulan Ini',
+        'value': s.laporanBulanIni.toString(),
+        'color': const Color(0xFFF57C00),
+        'bg': const Color(0xFFEAF3FF),
+        'icon': Icons.assignment_outlined,
+      },
     ];
 
-    return _chartCard(
-      child: BarChart(
-        BarChartData(
-          maxY: maxY.toDouble(),
-          gridData: FlGridData(show: true, horizontalInterval: maxY / 5),
-          borderData: FlBorderData(show: false),
-          titlesData: FlTitlesData(
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 36,
-                interval: maxY / 5,
-                getTitlesWidget: (value, _) => Text(
-                  value.toInt().toString(),
-                  style: const TextStyle(fontSize: 10, color: Colors.grey),
-                ),
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: cards.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+        childAspectRatio: 1.9,
+      ),
+      itemBuilder: (_, i) {
+        final c = cards[i];
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: (c['color'] as Color).withOpacity(0.15)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
-            ),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                getTitlesWidget: (value, _) {
-                  final idx = value.toInt();
-                  if (idx < 0 || idx >= labels.length) {
-                    return const SizedBox();
-                  }
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      labels[idx],
-                      style: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: c['bg'] as Color,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(c['icon'] as IconData, color: c['color'] as Color, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      c['value'] as String,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: c['color'] as Color,
                       ),
                     ),
-                  );
-                },
-              ),
-            ),
-          ),
-          barGroups: List.generate(values.length, (i) {
-            return BarChartGroupData(
-              x: i,
-              barRods: [
-                BarChartRodData(
-                  toY: values[i],
-                  width: 22,
-                  borderRadius: BorderRadius.circular(6),
-                  color: barColors[i],
+                    Text(
+                      c['label'] as String,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF616161),
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(999),
+                      child: LinearProgressIndicator(
+                        minHeight: 4,
+                        backgroundColor: (c['bg'] as Color).withOpacity(0.45),
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(c['color'] as Color),
+                        value: 1,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            );
-          }),
-        ),
-      ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildStatusCompositionChart(DashboardStats s) {
-    final total = (s.kecamatanAman + s.kecamatanWaspada + s.kecamatanKritis)
-        .toDouble();
-    if (total == 0) {
-      return _chartCard(
-        child: const Center(
-          child: Text('Belum ada data status kecamatan'),
-        ),
-      );
-    }
+  Widget _buildStatusSummaryStrip(DashboardStats s) {
+    final items = [
+      {
+        'label': 'Aman',
+        'value': s.kecamatanAman,
+        'color': const Color(0xFF2E7D32),
+      },
+      {
+        'label': 'Waspada',
+        'value': s.kecamatanWaspada,
+        'color': const Color(0xFFF57C00),
+      },
+      {
+        'label': 'Kritis',
+        'value': s.kecamatanKritis,
+        'color': const Color(0xFFC62828),
+      },
+      {
+        'label': 'Alert Aktif',
+        'value': s.alertCount,
+        'color': const Color(0xFF1565C0),
+      },
+    ];
 
-    return _chartCard(
-      child: Row(
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: items.map((item) {
+        final color = item['color'] as Color;
+        final label = item['label'] as String;
+        final value = item['value'] as int;
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: color.withOpacity(0.2)),
+          ),
+          child: RichText(
+            text: TextSpan(
+              style: const TextStyle(fontSize: 11),
+              children: [
+                TextSpan(
+                  text: '$label: ',
+                  style: TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                TextSpan(
+                  text: '$value',
+                  style: TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  List<double> _getDataBySelectedKomoditas(DashboardStats s) {
+    switch (_selectedKomoditasIdx) {
+      case 0:
+        return s.harga7HariBeras;
+      case 1:
+        return s.harga7HariJagung;
+      case 2:
+        return s.harga7HariKedelai;
+      case 3:
+        return s.harga7HariCabai;
+      case 4:
+        return s.harga7HariGula;
+      case 5:
+        return s.harga7HariMinyak;
+      default:
+        return s.harga7HariBeras;
+    }
+  }
+
+  String _formatCompact(double value) {
+    if (value >= 1000000) {
+      return '${(value / 1000000).toStringAsFixed(1)}jt';
+    }
+    if (value >= 1000) {
+      final rb = value / 1000;
+      final isRound = (rb - rb.roundToDouble()).abs() < 0.05;
+      return isRound ? '${rb.round()}rb' : '${rb.toStringAsFixed(1)}rb';
+    }
+    return value.toStringAsFixed(0);
+  }
+
+  Widget _buildTrendHargaCard(DashboardStats s) {
+    final data = _getDataBySelectedKomoditas(s);
+    final labels = s.tanggalLabels.isEmpty
+        ? List<String>.generate(data.length, (i) => 'H${i + 1}')
+        : s.tanggalLabels;
+    final showEvery = labels.length > 10 ? (labels.length / 6).ceil() : 1;
+    final color = _komoditas[_selectedKomoditasIdx]['color'] as Color;
+
+    final spots = data
+        .asMap()
+        .entries
+        .where((e) => e.value > 0)
+        .map((e) => FlSpot(e.key.toDouble(), e.value))
+        .toList();
+
+    final values = spots.map((e) => e.y).toList();
+    final minRaw = values.isEmpty ? 0.0 : values.reduce(math.min);
+    final maxRaw = values.isEmpty ? 1.0 : values.reduce(math.max);
+    final span = (maxRaw - minRaw).abs();
+    final padding = span > 0 ? span * 0.18 : (maxRaw > 0 ? maxRaw * 0.08 : 1.0);
+    final chartMinY = math.max(0.0, minRaw - padding).toDouble();
+    final chartMaxY = (maxRaw + padding).toDouble();
+    final yInterval =
+        ((chartMaxY - chartMinY) / 4).clamp(1, double.infinity).toDouble();
+    final latestPrice = data.isEmpty ? 0.0 : data.last;
+    final earliestPrice = data.isEmpty ? 0.0 : data.first;
+    final changePct = earliestPrice == 0
+      ? 0.0
+      : ((latestPrice - earliestPrice) / earliestPrice) * 100;
+    final avgPrice =
+      data.isEmpty ? 0.0 : data.reduce((a, b) => a + b) / data.length;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            flex: 5,
-            child: PieChart(
-              PieChartData(
-                centerSpaceRadius: 40,
-                sectionsSpace: 2,
-                sections: [
-                  PieChartSectionData(
-                    value: s.kecamatanAman.toDouble(),
-                    color: const Color(0xFF2E7D32),
-                    title:
-                        '${((s.kecamatanAman / total) * 100).toStringAsFixed(0)}%',
-                    radius: 48,
-                    titleStyle: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Panel Tren Harga',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF212121),
                     ),
                   ),
-                  PieChartSectionData(
-                    value: s.kecamatanWaspada.toDouble(),
-                    color: const Color(0xFFF57C00),
-                    title:
-                        '${((s.kecamatanWaspada / total) * 100).toStringAsFixed(0)}%',
-                    radius: 48,
-                    titleStyle: const TextStyle(
-                      color: Colors.white,
+                  const SizedBox(height: 3),
+                  Text(
+                    'Rp ${latestPrice.toStringAsFixed(0)}',
+                    style: TextStyle(
                       fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  PieChartSectionData(
-                    value: s.kecamatanKritis.toDouble(),
-                    color: const Color(0xFFC62828),
-                    title:
-                        '${((s.kecamatanKritis / total) * 100).toStringAsFixed(0)}%',
-                    radius: 48,
-                    titleStyle: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w700,
+                      color: color,
                     ),
                   ),
                 ],
               ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: (changePct >= 0
+                          ? const Color(0xFFE8F5E9)
+                          : const Color(0xFFFFEBEE))
+                      .withOpacity(0.9),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '${changePct >= 0 ? '+' : ''}${changePct.toStringAsFixed(1)}%',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: changePct >= 0
+                        ? const Color(0xFF2E7D32)
+                        : const Color(0xFFC62828),
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: s.periode,
+                    icon: const Icon(Icons.keyboard_arrow_down, size: 16),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF424242),
+                    ),
+                    items: _periodeOptions.entries
+                        .map(
+                          (e) => DropdownMenuItem<String>(
+                            value: e.key,
+                            child: Text(e.value),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value == null || value == s.periode) {
+                        return;
+                      }
+                      context
+                          .read<AnalyticsBloc>()
+                          .add(LoadDashboardStats(periode: value));
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 28,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: _komoditas.length,
+              itemBuilder: (_, i) {
+                final isSelected = _selectedKomoditasIdx == i;
+                final c = _komoditas[i]['color'] as Color;
+                return GestureDetector(
+                  onTap: () => setState(() => _selectedKomoditasIdx = i),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: const EdgeInsets.only(right: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isSelected ? c : Colors.grey[100],
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${_komoditas[i]['emoji']} ${_komoditas[i]['nama']}',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: isSelected ? Colors.white : Colors.grey[600],
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
-          Expanded(
-            flex: 4,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _legendItem('Aman', s.kecamatanAman, const Color(0xFF2E7D32)),
-                const SizedBox(height: 8),
-                _legendItem(
-                    'Waspada', s.kecamatanWaspada, const Color(0xFFF57C00)),
-                const SizedBox(height: 8),
-                _legendItem('Kritis', s.kecamatanKritis, const Color(0xFFC62828)),
-              ],
+          const SizedBox(height: 12),
+          if (spots.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 32),
+                child: Column(
+                  children: [
+                    Icon(Icons.bar_chart_outlined, size: 40, color: Colors.grey[300]),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Belum ada data harga',
+                      style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            SizedBox(
+              height: 180,
+              child: LineChart(
+                LineChartData(
+                  minX: 0,
+                  maxX: (labels.length - 1).toDouble(),
+                  minY: chartMinY,
+                  maxY: chartMaxY,
+                  lineTouchData: LineTouchData(
+                    handleBuiltInTouches: true,
+                    touchTooltipData: LineTouchTooltipData(
+                      getTooltipColor: (_) => const Color(0xFF1E293B).withOpacity(0.9),
+                      tooltipRoundedRadius: 10,
+                      fitInsideHorizontally: true,
+                      tooltipBorder: const BorderSide(color: Colors.white24, width: 1),
+                      getTooltipItems: (touchedSpots) {
+                        return touchedSpots.map((spot) {
+                          final idx = spot.x.toInt();
+                          final label =
+                              (idx >= 0 && idx < labels.length) ? labels[idx] : '';
+                          return LineTooltipItem(
+                            '$label\n',
+                            const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            children: [
+                              TextSpan(
+                                text: 'Rp ${_formatCompact(spot.y)}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          );
+                        }).toList();
+                      },
+                    ),
+                  ),
+                  gridData: FlGridData(
+                    show: true,
+                    drawVerticalLine: true,
+                    getDrawingHorizontalLine: (_) => FlLine(
+                      color: Colors.grey.withOpacity(0.15),
+                      strokeWidth: 1,
+                      dashArray: [4, 4],
+                    ),
+                    getDrawingVerticalLine: (_) => FlLine(
+                      color: Colors.grey.withOpacity(0.15),
+                      strokeWidth: 1,
+                      dashArray: [4, 4],
+                    ),
+                  ),
+                  titlesData: FlTitlesData(
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 42,
+                        interval: yInterval,
+                        getTitlesWidget: (v, meta) {
+                          if (v == meta.max || v == meta.min) {
+                            return const SizedBox.shrink();
+                          }
+                          return Text(
+                            _formatCompact(v),
+                            style: const TextStyle(
+                              fontSize: 9, 
+                              color: Colors.grey,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        interval: 1,
+                        getTitlesWidget: (v, _) {
+                          final idx = v.toInt();
+                          if (idx < 0 || idx >= labels.length) {
+                            return const SizedBox();
+                          }
+                          if (idx % showEvery != 0 && idx != labels.length - 1) {
+                            return const SizedBox();
+                          }
+                          return Text(
+                            labels[idx],
+                            style: const TextStyle(fontSize: 9, color: Colors.grey),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  borderData: FlBorderData(
+                    show: true,
+                    border: Border(
+                      left: BorderSide(color: Colors.grey.withOpacity(0.25)),
+                      bottom: BorderSide(color: Colors.grey.withOpacity(0.25)),
+                    ),
+                  ),
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: spots,
+                      isCurved: true,
+                      preventCurveOverShooting: true,
+                      color: color,
+                      barWidth: 3,
+                      isStrokeCapRound: true,
+                      shadow: BoxShadow(
+                        color: color.withOpacity(0.3),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            color.withOpacity(0.35),
+                            color.withOpacity(0.0),
+                          ],
+                        ),
+                      ),
+                      dotData: FlDotData(
+                        show: true,
+                        getDotPainter: (spot, percent, barData, index) {
+                          if (spots.length > 30 && index % 3 != 0 && index != spots.length - 1 && index != 0) {
+                            return FlDotCirclePainter(radius: 0, color: Colors.transparent, strokeWidth: 0);
+                          }
+                          return FlDotCirclePainter(
+                            radius: 3.5,
+                            color: Colors.white,
+                            strokeWidth: 2,
+                            strokeColor: color,
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              _priceStatBox('Min', data.isEmpty ? 0 : minRaw, const Color(0xFF546E7A)),
+              const SizedBox(width: 8),
+              _priceStatBox('Rata-rata', avgPrice, color),
+              const SizedBox(width: 8),
+              _priceStatBox('Maks', data.isEmpty ? 0 : maxRaw, const Color(0xFF1E88E5)),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildPriceTrendChart(DashboardStats s) {
-    final beras = s.harga7HariBeras;
-    final jagung = s.harga7HariJagung;
-    final cabai = s.harga7HariCabai;
-    final all = [...beras, ...jagung, ...cabai];
-    final double minY =
-      all.isEmpty ? 0.0 : all.reduce((a, b) => a < b ? a : b) * 0.95;
-    final double maxY =
-      all.isEmpty ? 10.0 : all.reduce((a, b) => a > b ? a : b) * 1.05;
-
-    List<FlSpot> spots(List<double> values) {
-      return values.asMap().entries.map((e) {
-        return FlSpot(e.key.toDouble(), e.value);
-      }).toList();
-    }
-
-    return _chartCard(
-      height: 290,
-      child: LineChart(
-        LineChartData(
-          minX: 0,
-          maxX: 6,
-          minY: minY,
-          maxY: maxY,
-          gridData: FlGridData(show: true, horizontalInterval: (maxY - minY) / 5),
-          borderData: FlBorderData(show: false),
-          titlesData: FlTitlesData(
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 54,
-                interval: (maxY - minY) / 5,
-                getTitlesWidget: (value, _) => Text(
-                  '${(value / 1000).toStringAsFixed(0)}rb',
-                  style: const TextStyle(fontSize: 10, color: Colors.grey),
-                ),
+  Widget _priceStatBox(String label, double value, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: color,
               ),
             ),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                getTitlesWidget: (value, _) => Text(
-                  'H-${6 - value.toInt()}',
-                  style: const TextStyle(fontSize: 10, color: Colors.grey),
-                ),
+            const SizedBox(height: 3),
+            Text(
+              'Rp ${value.toStringAsFixed(0)}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF37474F),
               ),
-            ),
-          ),
-          lineBarsData: [
-            LineChartBarData(
-              spots: spots(beras),
-              isCurved: true,
-              color: const Color(0xFF2E7D32),
-              barWidth: 3,
-              dotData: const FlDotData(show: false),
-            ),
-            LineChartBarData(
-              spots: spots(jagung),
-              isCurved: true,
-              color: const Color(0xFF1976D2),
-              barWidth: 3,
-              dotData: const FlDotData(show: false),
-            ),
-            LineChartBarData(
-              spots: spots(cabai),
-              isCurved: true,
-              color: const Color(0xFFC62828),
-              barWidth: 3,
-              dotData: const FlDotData(show: false),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _legendItem(String label, int value, Color color) {
-    return Row(
-      children: [
-        Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            '$label: $value',
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-          ),
-        ),
-      ],
     );
   }
 
@@ -513,10 +920,6 @@ class _AnalyticsPageState extends State<AnalyticsPage>
     );
   }
 
-  Widget _buildStatusList(BuildContext ctx, List<StatusPanganItem> items) {
-    return _buildStatusCharts(ctx, items);
-  }
-
   Widget _buildStatusCharts(BuildContext ctx, List<StatusPanganItem> items) {
     if (items.isEmpty) {
       return const Center(
@@ -540,6 +943,9 @@ class _AnalyticsPageState extends State<AnalyticsPage>
     final turun = items.where((e) => e.hargaTrend == 'TURUN').length;
     final stabil = items.where((e) => e.hargaTrend == 'STABIL').length;
     final totalTrend = (naik + turun + stabil).clamp(1, 999999);
+    final maxTrend = math.max(naik, math.max(turun, stabil)).toDouble();
+    final trendMaxY = math.max(4.0, (maxTrend * 1.25).ceilToDouble());
+    final trendInterval = math.max(1.0, (trendMaxY / 4).ceilToDouble());
 
     return RefreshIndicator(
       color: const Color(0xFF2E7D32),
@@ -701,13 +1107,57 @@ class _AnalyticsPageState extends State<AnalyticsPage>
             height: 250,
             child: BarChart(
               BarChartData(
-                maxY: [naik, turun, stabil, 1].reduce((a, b) => a > b ? a : b) *
-                    1.4,
-                gridData: FlGridData(show: true, horizontalInterval: 1),
+                maxY: trendMaxY,
+                barTouchData: BarTouchData(
+                  enabled: true,
+                  touchTooltipData: BarTouchTooltipData(
+                    getTooltipItem: (group, _, rod, __) {
+                      final labels = ['Naik', 'Turun', 'Stabil'];
+                      final idx = group.x;
+                      if (idx < 0 || idx >= labels.length) {
+                        return null;
+                      }
+                      return BarTooltipItem(
+                        '${labels[idx]}\n${rod.toY.toInt()} kecamatan',
+                        const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                gridData: FlGridData(
+                  show: true,
+                  horizontalInterval: trendInterval,
+                  drawVerticalLine: false,
+                  getDrawingHorizontalLine: (_) => FlLine(
+                    color: const Color(0xFFE9EEF3),
+                    strokeWidth: 1,
+                  ),
+                ),
                 borderData: FlBorderData(show: false),
                 titlesData: FlTitlesData(
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
+                  topTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (value, _) {
+                        final idx = value.toInt();
+                        final values = [naik, turun, stabil];
+                        if (idx < 0 || idx >= values.length) {
+                          return const SizedBox();
+                        }
+                        return Text(
+                          values[idx].toString(),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF455A64),
+                          ),
+                        );
+                      },
+                    ),
                   ),
                   rightTitles: const AxisTitles(
                     sideTitles: SideTitles(showTitles: false),
@@ -715,8 +1165,8 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      reservedSize: 28,
-                      interval: 1,
+                      reservedSize: 34,
+                      interval: trendInterval,
                       getTitlesWidget: (v, _) => Text(
                         v.toInt().toString(),
                         style:
@@ -753,7 +1203,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                     barRods: [
                       BarChartRodData(
                         toY: naik.toDouble(),
-                        width: 28,
+                        width: 24,
                         color: const Color(0xFFC62828),
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -764,7 +1214,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                     barRods: [
                       BarChartRodData(
                         toY: turun.toDouble(),
-                        width: 28,
+                        width: 24,
                         color: const Color(0xFF2E7D32),
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -775,7 +1225,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                     barRods: [
                       BarChartRodData(
                         toY: stabil.toDouble(),
-                        width: 28,
+                        width: 24,
                         color: const Color(0xFF1976D2),
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -872,19 +1322,6 @@ class _AnalyticsPageState extends State<AnalyticsPage>
         return const Color(0xFFC62828);
       default:
         return Colors.grey;
-    }
-  }
-
-  String _statusLabel(String status) {
-    switch (status) {
-      case 'aman':
-        return '✅ Aman';
-      case 'waspada':
-        return '⚠️ Waspada';
-      case 'kritis':
-        return '🚨 Kritis';
-      default:
-        return 'Tidak Ada Data';
     }
   }
 

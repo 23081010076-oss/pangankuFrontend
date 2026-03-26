@@ -302,6 +302,7 @@ class _HargaPageState extends State<HargaPage> {
     bool canUpdate,
     bool canDelete,
   ) {
+    final isRecordPerKecamatan = item.kecamatanId.isNotEmpty && item.id.isNotEmpty;
     final trendColor = item.trend == 'NAIK'
         ? const Color(0xFFC62828)
         : item.trend == 'TURUN'
@@ -394,7 +395,7 @@ class _HargaPageState extends State<HargaPage> {
                     ),
                   ],
                 ),
-                if (canUpdate || canDelete) ...[
+                if (isRecordPerKecamatan && (canUpdate || canDelete)) ...[
                   const SizedBox(height: 4),
                   Row(
                     mainAxisSize: MainAxisSize.min,
@@ -864,22 +865,74 @@ class _HargaDetailSheetState extends State<_HargaDetailSheet> {
       height: 200,
       child: LineChart(
         LineChartData(
+          lineTouchData: LineTouchData(
+            handleBuiltInTouches: true,
+            touchTooltipData: LineTouchTooltipData(
+              getTooltipColor: (_) => const Color(0xFF1E293B).withOpacity(0.9),
+              tooltipRoundedRadius: 10,
+              fitInsideHorizontally: true,
+              tooltipBorder: const BorderSide(color: Colors.white24, width: 1),
+              getTooltipItems: (touchedSpots) {
+                return touchedSpots.map((spot) {
+                  final idx = spot.x.toInt();
+                  if (idx < 0 || idx >= data.length) return null;
+                  final dt = DateTime.tryParse(data[idx].tanggal);
+                  final label = dt != null ? DateFormat('dd/MM').format(dt) : '';
+                  return LineTooltipItem(
+                    '$label\n',
+                    const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: 'Rp ${NumberFormat('#,###', 'id_ID').format(spot.y)}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  );
+                }).toList();
+              },
+            ),
+          ),
           gridData: FlGridData(
             show: true,
-            drawVerticalLine: false,
+            drawVerticalLine: true,
             horizontalInterval: (maxY - minY) / 4,
-            getDrawingHorizontalLine: (_) =>
-                FlLine(color: Colors.grey[200]!, strokeWidth: 1),
+            getDrawingHorizontalLine: (_) => FlLine(
+              color: Colors.grey.withOpacity(0.15),
+              strokeWidth: 1,
+              dashArray: [4, 4],
+            ),
+            getDrawingVerticalLine: (_) => FlLine(
+              color: Colors.grey.withOpacity(0.15),
+              strokeWidth: 1,
+              dashArray: [4, 4],
+            ),
           ),
           titlesData: FlTitlesData(
             leftTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
-                reservedSize: 52,
-                getTitlesWidget: (v, _) => Text(
-                  '${(v / 1000).toStringAsFixed(0)}rb',
-                  style: const TextStyle(fontSize: 9, color: Colors.grey),
-                ),
+                reservedSize: 42,
+                getTitlesWidget: (v, meta) {
+                  if (v == meta.max || v == meta.min) {
+                    return const SizedBox.shrink();
+                  }
+                  return Text(
+                    '${(v / 1000).toStringAsFixed(0)}rb',
+                    style: const TextStyle(
+                      fontSize: 9, 
+                      color: Colors.grey,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  );
+                },
               ),
             ),
             bottomTitles: AxisTitles(
@@ -914,13 +967,40 @@ class _HargaDetailSheetState extends State<_HargaDetailSheet> {
             LineChartBarData(
               spots: spots,
               isCurved: true,
+              preventCurveOverShooting: true,
               color: const Color(0xFF2E7D32),
-              barWidth: 2.5,
+              barWidth: 3,
+              isStrokeCapRound: true,
+              shadow: BoxShadow(
+                color: const Color(0xFF2E7D32).withOpacity(0.3),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
               belowBarData: BarAreaData(
                 show: true,
-                color: const Color(0xFF2E7D32).withOpacity(0.08),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    const Color(0xFF2E7D32).withOpacity(0.35),
+                    const Color(0xFF2E7D32).withOpacity(0.0),
+                  ],
+                ),
               ),
-              dotData: const FlDotData(show: false),
+              dotData: FlDotData(
+                show: true,
+                getDotPainter: (spot, percent, barData, index) {
+                  if (spots.length > 30 && index % 3 != 0 && index != spots.length - 1 && index != 0) {
+                    return FlDotCirclePainter(radius: 0, color: Colors.transparent, strokeWidth: 0);
+                  }
+                  return FlDotCirclePainter(
+                    radius: 3.5,
+                    color: Colors.white,
+                    strokeWidth: 2,
+                    strokeColor: const Color(0xFF2E7D32),
+                  );
+                },
+              ),
             ),
           ],
         ),
