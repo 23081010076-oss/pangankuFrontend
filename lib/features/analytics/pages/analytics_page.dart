@@ -928,17 +928,11 @@ class _AnalyticsPageState extends State<AnalyticsPage>
       );
     }
 
-    final sorted = [...items]..sort((a, b) {
-        final order = {
-          'kritis': 0,
-          'waspada': 1,
-          'aman': 2,
-          'tidak_ada_data': 3
-        };
-        return (order[a.statusStok] ?? 4).compareTo(order[b.statusStok] ?? 4);
-      });
+    // Perbaikan 1: Sorting berdasarkan stokPersen dari TERENDAH ke TERTINGGI (paling kritis di kiri)
+    final sorted = [...items]..sort((a, b) => a.stokPersen.compareTo(b.stokPersen));
 
-    final top = sorted.take(8).toList();
+    // Tampilkan seluruh kecamatan, bukan hanya 8 prioritas
+    final top = sorted.toList(); // .take(8).toList() dihapus
     final naik = items.where((e) => e.hargaTrend == 'NAIK').length;
     final turun = items.where((e) => e.hargaTrend == 'TURUN').length;
     final stabil = items.where((e) => e.hargaTrend == 'STABIL').length;
@@ -953,13 +947,48 @@ class _AnalyticsPageState extends State<AnalyticsPage>
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _chartSectionTitle('Grafik Stok per Kecamatan (Top 8 Prioritas)'),
+          _chartSectionTitle('Grafik Stok per Kecamatan'),
           const SizedBox(height: 10),
           _chartCard(
-            height: 300,
-            child: BarChart(
-              BarChartData(
-                maxY: 100,
+            height: 350, // Tinggi diperbesar agar visualnya tidak sempit, karena jumlah bar lebih banyak
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SizedBox(
+                width: math.max(MediaQuery.of(ctx).size.width, top.length * 35.0),
+                child: BarChart(
+                  BarChartData(
+                    maxY: 100,
+                    // Perbaikan 2: Menambahkan Garis Batas Kritis & Aman
+                extraLinesData: ExtraLinesData(
+                  horizontalLines: [
+                    HorizontalLine(
+                      y: 30, // Asumsi di bawah 30% itu kritis
+                      color: Colors.red.withOpacity(0.6),
+                      strokeWidth: 2,
+                      dashArray: [5, 5],
+                      label: HorizontalLineLabel(
+                        show: true,
+                        alignment: Alignment.topRight,
+                        padding: const EdgeInsets.only(right: 5, bottom: 5),
+                        style: const TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold),
+                        labelResolver: (_) => 'Batas Kritis',
+                      ),
+                    ),
+                    HorizontalLine(
+                      y: 70, // Asumsi di atas 70% itu aman
+                      color: Colors.green.withOpacity(0.6),
+                      strokeWidth: 2,
+                      dashArray: [5, 5],
+                      label: HorizontalLineLabel(
+                        show: true,
+                        alignment: Alignment.topRight,
+                        padding: const EdgeInsets.only(right: 5, bottom: 5),
+                        style: const TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold),
+                        labelResolver: (_) => 'Batas Aman',
+                      ),
+                    ),
+                  ],
+                ),
                 gridData: FlGridData(show: true, horizontalInterval: 20),
                 borderData: FlBorderData(show: false),
                 barTouchData: BarTouchData(
@@ -1001,16 +1030,23 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
+                      reservedSize: 60, // Memberikan ruang lebih besar untuk teks agar tidak terpotong
                       getTitlesWidget: (v, _) {
                         final i = v.toInt();
                         if (i < 0 || i >= top.length) return const SizedBox();
+                        
+                        // Perbaikan 3: Menggunakan Singkatan Nama Kecamatan
+                        String name = top[i].kecamatanNama;
+                        String shortName = name.length > 3 ? name.substring(0, 3).toUpperCase() : name.toUpperCase();
+
                         return Padding(
                           padding: const EdgeInsets.only(top: 8),
                           child: Text(
-                            '${i + 1}',
+                            shortName,
                             style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF455A64)
                             ),
                           ),
                         );
@@ -1021,10 +1057,11 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                 barGroups: List.generate(top.length, (i) {
                   return BarChartGroupData(
                     x: i,
+                    showingTooltipIndicators: [0], // Show value on top
                     barRods: [
                       BarChartRodData(
                         toY: top[i].stokPersen,
-                        width: 16,
+                        width: 14,
                         borderRadius: BorderRadius.circular(6),
                         color: _statusColor(top[i].statusStok),
                       ),
@@ -1033,7 +1070,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                 }),
               ),
             ),
-          ),
+          ))),
           const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.all(12),
@@ -1056,7 +1093,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
                   child: Row(
                     children: [
                       SizedBox(
-                        width: 20,
+                        width: 25,
                         child: Text(
                           '${i + 1}.',
                           style: const TextStyle(
@@ -1101,6 +1138,134 @@ class _AnalyticsPageState extends State<AnalyticsPage>
             ),
           ),
           const SizedBox(height: 20),
+          
+          // Perbaikan 4: Tambah Grafik Garis (Line Chart) untuk melihat kurva secara mulus
+          _chartSectionTitle('Kurva Persentase Stok per Kecamatan'),
+          const SizedBox(height: 10),
+          _chartCard(
+            height: 220,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SizedBox(
+                width: math.max(MediaQuery.of(ctx).size.width, top.length * 40.0),
+                child: LineChart(
+                  LineChartData(
+                    minY: 0,
+                maxY: 100,
+                extraLinesData: ExtraLinesData(
+                  horizontalLines: [
+                    HorizontalLine(
+                      y: 30,
+                      color: Colors.red.withOpacity(0.4),
+                      strokeWidth: 1,
+                      dashArray: [5, 5],
+                    ),
+                  ],
+                ),
+                gridData: FlGridData(
+                  show: true,
+                  horizontalInterval: 25,
+                  drawVerticalLine: false,
+                  getDrawingHorizontalLine: (_) => FlLine(
+                    color: Colors.grey.withOpacity(0.15),
+                    strokeWidth: 1,
+                  ),
+                ),
+                titlesData: FlTitlesData(
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 34,
+                      interval: 25,
+                      getTitlesWidget: (v, _) => Text(
+                        '${v.toInt()}%',
+                        style: const TextStyle(fontSize: 10, color: Colors.grey),
+                      ),
+                    ),
+                  ),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (value, _) {
+                        final idx = value.toInt();
+                        if (idx < 0 || idx >= top.length) return const SizedBox();
+                        String name = top[idx].kecamatanNama;
+                        String shortName = name.length > 3 ? name.substring(0, 3).toUpperCase() : name.toUpperCase();
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            shortName,
+                            style: const TextStyle(fontSize: 9, color: Colors.grey),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                borderData: FlBorderData(
+                  show: true,
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey.withOpacity(0.3)),
+                    left: BorderSide(color: Colors.grey.withOpacity(0.3)),
+                  ),
+                ),
+                lineTouchData: LineTouchData(
+                  touchTooltipData: LineTouchTooltipData(
+                    getTooltipColor: (_) => const Color(0xFF1E293B),
+                    getTooltipItems: (touchedSpots) {
+                      return touchedSpots.map((spot) {
+                        return LineTooltipItem(
+                          '${top[spot.x.toInt()].kecamatanNama}\n',
+                          const TextStyle(color: Colors.white70, fontSize: 10),
+                          children: [
+                            TextSpan(
+                              text: '${spot.y.toStringAsFixed(1)}%',
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                            ),
+                          ],
+                        );
+                      }).toList();
+                    },
+                  ),
+                ),
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: List.generate(top.length, (i) {
+                      return FlSpot(i.toDouble(), top[i].stokPersen);
+                    }),
+                    isCurved: true,
+                    color: const Color(0xFF2E7D32),
+                    barWidth: 3,
+                    isStrokeCapRound: true,
+                    dotData: FlDotData(
+                      show: true,
+                      getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
+                        radius: 4,
+                        color: Colors.white,
+                        strokeWidth: 2,
+                        strokeColor: const Color(0xFF2E7D32),
+                      ),
+                    ),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      gradient: LinearGradient(
+                        colors: [
+                          const Color(0xFF2E7D32).withOpacity(0.3),
+                          const Color(0xFF2E7D32).withOpacity(0.0),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ))),
+          const SizedBox(height: 20),
+
           _chartSectionTitle('Grafik Tren Harga per Status'),
           const SizedBox(height: 10),
           _chartCard(
