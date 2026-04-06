@@ -1,4 +1,4 @@
-﻿import 'dart:math' as math;
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -116,7 +116,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       Text(
                         item['label'] as String,
                         style: TextStyle(
-                          fontSize: 9,
+                          fontSize: 10,
                           fontWeight:
                               isActive ? FontWeight.w700 : FontWeight.w400,
                           color: isActive
@@ -327,34 +327,37 @@ class _HomePage extends StatelessWidget {
                           },
                         ),
                       ),
-                      Stack(
-                        children: [
-                          Container(
-                            width: 38,
-                            height: 38,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.notifications_outlined,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                          ),
-                          Positioned(
-                            top: 6,
-                            right: 6,
-                            child: Container(
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFFFF5722),
+                      GestureDetector(
+                        onTap: () => context.push('/notifikasi'),
+                        child: Stack(
+                          children: [
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
                                 shape: BoxShape.circle,
                               ),
+                              child: const Icon(
+                                Icons.notifications_outlined,
+                                color: Colors.white,
+                                size: 20,
+                              ),
                             ),
-                          ),
-                        ],
+                            Positioned(
+                              top: 6,
+                              right: 6,
+                              child: Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFFF5722),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(width: 10),
                       Container(
@@ -522,9 +525,9 @@ class _HomePage extends StatelessWidget {
         'index': 3,
       },
       {
-        'icon': Icons.bar_chart,
-        'label': 'Laporan &\nAnalisis',
-        'color': const Color(0xFF7B1FA2),
+        'icon': Icons.warning_amber_rounded,
+        'label': 'Laporan\nDarurat',
+        'color': const Color(0xFFD32F2F),
         'index': 4,
       },
       {
@@ -534,10 +537,16 @@ class _HomePage extends StatelessWidget {
         'index': -1,
       },
       {
-        'icon': Icons.notifications_outlined,
-        'label': 'Notifikasi',
-        'color': const Color(0xFFF57C00),
-        'index': -2,
+        'icon': Icons.bar_chart_outlined,
+        'label': 'Analitik\nPangan',
+        'color': const Color(0xFF7B1FA2),
+        'index': -3,
+      },
+      {
+        'icon': Icons.auto_graph_outlined,
+        'label': 'Prediksi\nHarga',
+        'color': const Color(0xFF512DA8),
+        'index': -4,
       },
     ];
 
@@ -545,10 +554,10 @@ class _HomePage extends StatelessWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
+        crossAxisCount: 4,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
-        childAspectRatio: 1.0,
+        childAspectRatio: 0.75,
       ),
       itemCount: menus.length,
       itemBuilder: (context, idx) {
@@ -560,8 +569,10 @@ class _HomePage extends StatelessWidget {
               onTabChange(navIdx);
             } else if (navIdx == -1) {
               context.push('/peta');
-            } else if (navIdx == -2) {
-              context.push('/notifikasi');
+            } else if (navIdx == -3) {
+              context.push('/analytics');
+            } else if (navIdx == -4) {
+              context.push('/harga/forecast');
             }
           },
           child: Container(
@@ -580,26 +591,31 @@ class _HomePage extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  width: 44,
-                  height: 44,
+                  width: 40,
+                  height: 40,
                   decoration: BoxDecoration(
                     color: (menu['color'] as Color).withOpacity(0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     menu['icon'] as IconData,
-                    size: 22,
+                    size: 20,
                     color: menu['color'] as Color,
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  menu['label'] as String,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF424242),
+                const SizedBox(height: 6),
+                Flexible(
+                  child: Text(
+                    menu['label'] as String,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF424242),
+                      height: 1.2,
+                    ),
                   ),
                 ),
               ],

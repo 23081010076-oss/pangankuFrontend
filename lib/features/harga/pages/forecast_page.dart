@@ -417,7 +417,7 @@ class _ForecastPageState extends State<ForecastPage> {
                           return const SizedBox.shrink();
                         }
                         return Text(
-                          'rb',
+                          '${(value / 1000).toStringAsFixed(0)}rb',
                           style: TextStyle(
                             fontSize: 10,
                             color: Colors.grey[500],
@@ -501,7 +501,7 @@ class _ForecastPageState extends State<ForecastPage> {
                         final day = DateTime.now()
                             .add(Duration(days: spot.spotIndex + 1));
                         return LineTooltipItem(
-                          '\n',
+                          '${DateFormat('dd/MM').format(day)}\n',
                           const TextStyle(
                             color: Colors.white70,
                             fontSize: 10,
@@ -509,7 +509,7 @@ class _ForecastPageState extends State<ForecastPage> {
                           ),
                           children: [
                             TextSpan(
-                              text: 'Rp ',
+                              text: 'Rp ${_currencyFmt.format(spot.y)}',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 13,

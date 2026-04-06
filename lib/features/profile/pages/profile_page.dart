@@ -198,23 +198,6 @@ class _ProfilePageState extends State<ProfilePage> {
             _infoCard(profile, role),
             const SizedBox(height: 16),
           ],
-          if (isAdminOrPetugas) ...[
-            _sectionLabel('Analitik & Laporan'),
-            const SizedBox(height: 8),
-            _menuCard([
-              _MenuItem(
-                icon: Icons.bar_chart_outlined,
-                label: 'Analitik Pangan',
-                onTap: () => ctx.push('/analytics'),
-              ),
-              _MenuItem(
-                icon: Icons.auto_graph_outlined,
-                label: 'Prediksi Harga',
-                onTap: () => ctx.push('/harga/forecast'),
-              ),
-            ]),
-            const SizedBox(height: 16),
-          ],
           if (isAdmin) ...[
             _sectionLabel('Manajemen Data'),
             const SizedBox(height: 8),

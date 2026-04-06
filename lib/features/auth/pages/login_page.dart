@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../bloc/auth_bloc.dart';
@@ -103,11 +103,13 @@ class _LoginPageState extends State<LoginPage>
   }
 
   Widget _buildHeader() {
+    final screenH = MediaQuery.of(context).size.height;
+    final headerH = (screenH * 0.38).clamp(220.0, 340.0);
     return FadeTransition(
       opacity: _fadeAnim,
       child: Container(
         width: double.infinity,
-        height: 320,
+        height: headerH,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment(0.0, -1.0),

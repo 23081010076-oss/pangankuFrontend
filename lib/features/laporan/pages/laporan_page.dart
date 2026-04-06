@@ -241,7 +241,7 @@ class _LaporanPageState extends State<LaporanPage>
                 physics: const NeverScrollableScrollPhysics(),
                 crossAxisSpacing: 10,
                 mainAxisSpacing: 10,
-                childAspectRatio: 2.4,
+                childAspectRatio: 2.1,
                 children: [
                   _hargaCard(
                     '🌾',
