@@ -116,7 +116,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       Text(
                         item['label'] as String,
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 9,
                           fontWeight:
                               isActive ? FontWeight.w700 : FontWeight.w400,
                           color: isActive
@@ -557,7 +557,7 @@ class _HomePage extends StatelessWidget {
         crossAxisCount: 4,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
-        childAspectRatio: 0.75,
+        childAspectRatio: 0.85,
       ),
       itemCount: menus.length,
       itemBuilder: (context, idx) {
@@ -591,31 +591,26 @@ class _HomePage extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
                     color: (menu['color'] as Color).withOpacity(0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     menu['icon'] as IconData,
-                    size: 20,
+                    size: 22,
                     color: menu['color'] as Color,
                   ),
                 ),
-                const SizedBox(height: 6),
-                Flexible(
-                  child: Text(
-                    menu['label'] as String,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF424242),
-                      height: 1.2,
-                    ),
+                const SizedBox(height: 8),
+                Text(
+                  menu['label'] as String,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF424242),
                   ),
                 ),
               ],
