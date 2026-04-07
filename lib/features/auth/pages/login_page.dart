@@ -131,7 +131,7 @@ class _LoginPageState extends State<LoginPage>
                 height: 180,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(0.10),
+                  color: Colors.white.withValues(alpha: 0.10),
                 ),
               ),
             ),
@@ -143,7 +143,7 @@ class _LoginPageState extends State<LoginPage>
                 height: 120,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(0.10),
+                  color: Colors.white.withValues(alpha: 0.10),
                 ),
               ),
             ),
@@ -158,10 +158,10 @@ class _LoginPageState extends State<LoginPage>
                       width: 80,
                       height: 80,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: Colors.white.withOpacity(0.3),
+                          color: Colors.white.withValues(alpha: 0.3),
                           width: 2,
                         ),
                       ),
@@ -186,7 +186,7 @@ class _LoginPageState extends State<LoginPage>
                     Text(
                       'Sistem Informasi Ketahanan Pangan',
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
+                        color: Colors.white.withValues(alpha: 0.8),
                         fontSize: 12,
                       ),
                     ),
@@ -382,7 +382,7 @@ class _LoginPageState extends State<LoginPage>
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF2E7D32).withOpacity(0.4),
+                          color: const Color(0xFF2E7D32).withValues(alpha: 0.4),
                           blurRadius: 20,
                           offset: const Offset(0, 4),
                         ),

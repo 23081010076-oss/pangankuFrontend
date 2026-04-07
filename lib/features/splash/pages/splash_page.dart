@@ -81,7 +81,7 @@ class _SplashPageState extends State<SplashPage>
                 height: 300,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(0.10),
+                  color: Colors.white.withValues(alpha: 0.10),
                 ),
               ),
             ),
@@ -93,7 +93,7 @@ class _SplashPageState extends State<SplashPage>
                 height: 200,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(0.10),
+                  color: Colors.white.withValues(alpha: 0.10),
                 ),
               ),
             ),
@@ -105,7 +105,7 @@ class _SplashPageState extends State<SplashPage>
                 height: 400,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withOpacity(0.05),
+                  color: Colors.white.withValues(alpha: 0.05),
                 ),
               ),
             ),
@@ -126,10 +126,10 @@ class _SplashPageState extends State<SplashPage>
                             width: 110,
                             height: 110,
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
+                              color: Colors.white.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(28),
                               border: Border.all(
-                                color: Colors.white.withOpacity(0.3),
+                                color: Colors.white.withValues(alpha: 0.3),
                                 width: 2,
                               ),
                             ),
@@ -161,7 +161,7 @@ class _SplashPageState extends State<SplashPage>
                         child: Text(
                           'Sistem Informasi Ketahanan Pangan',
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.8),
+                            color: Colors.white.withValues(alpha: 0.8),
                             fontSize: 13,
                           ),
                         ),
@@ -171,7 +171,7 @@ class _SplashPageState extends State<SplashPage>
                         child: Text(
                           'Kabupaten Lamongan',
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.7),
+                            color: Colors.white.withValues(alpha: 0.7),
                             fontSize: 12,
                           ),
                         ),
@@ -189,7 +189,7 @@ class _SplashPageState extends State<SplashPage>
                                 child: LinearProgressIndicator(
                                   value: _progressAnim.value,
                                   backgroundColor:
-                                      Colors.white.withOpacity(0.2),
+                                      Colors.white.withValues(alpha: 0.2),
                                   valueColor:
                                       const AlwaysStoppedAnimation<Color>(
                                     Colors.white,
@@ -201,7 +201,7 @@ class _SplashPageState extends State<SplashPage>
                               Text(
                                 'Memuat aplikasi...',
                                 style: TextStyle(
-                                  color: Colors.white.withOpacity(0.6),
+                                  color: Colors.white.withValues(alpha: 0.6),
                                   fontSize: 11,
                                 ),
                               ),
@@ -247,7 +247,7 @@ class _WheatPainter extends CustomPainter {
       ..moveTo(center.dx, 4)
       ..cubicTo(center.dx - 4, 10, center.dx - 4, 16, center.dx, 20)
       ..cubicTo(center.dx + 4, 16, center.dx + 4, 10, center.dx, 4);
-    paint.color = Colors.white.withOpacity(0.9);
+    paint.color = Colors.white.withValues(alpha: 0.9);
     canvas.drawPath(path1, paint);
 
     // Left grain
@@ -255,7 +255,7 @@ class _WheatPainter extends CustomPainter {
       ..moveTo(center.dx - 10, 9)
       ..cubicTo(center.dx - 13, 16, center.dx - 11, 22, center.dx - 7, 23)
       ..cubicTo(center.dx - 5, 19, center.dx - 7, 13, center.dx - 10, 9);
-    paint.color = Colors.white.withOpacity(0.8);
+    paint.color = Colors.white.withValues(alpha: 0.8);
     canvas.drawPath(path2, paint);
 
     // Right grain
@@ -263,7 +263,7 @@ class _WheatPainter extends CustomPainter {
       ..moveTo(center.dx + 10, 9)
       ..cubicTo(center.dx + 13, 16, center.dx + 11, 22, center.dx + 7, 23)
       ..cubicTo(center.dx + 5, 19, center.dx + 7, 13, center.dx + 10, 9);
-    paint.color = Colors.white.withOpacity(0.8);
+    paint.color = Colors.white.withValues(alpha: 0.8);
     canvas.drawPath(path3, paint);
 
     // Wheat leaves
@@ -271,14 +271,14 @@ class _WheatPainter extends CustomPainter {
       ..moveTo(center.dx - 17, 18)
       ..cubicTo(center.dx - 16, 24, center.dx - 11, 28, center.dx - 7, 28)
       ..cubicTo(center.dx - 7, 23, center.dx - 12, 19, center.dx - 17, 18);
-    paint.color = Colors.white.withOpacity(0.7);
+    paint.color = Colors.white.withValues(alpha: 0.7);
     canvas.drawPath(path4, paint);
 
     final path5 = Path()
       ..moveTo(center.dx + 17, 18)
       ..cubicTo(center.dx + 16, 24, center.dx + 11, 28, center.dx + 7, 28)
       ..cubicTo(center.dx + 7, 23, center.dx + 12, 19, center.dx + 17, 18);
-    paint.color = Colors.white.withOpacity(0.7);
+    paint.color = Colors.white.withValues(alpha: 0.7);
     canvas.drawPath(path5, paint);
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
-import '../../../core/network/dio_client.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../data/admin_repository.dart';
 
 class KomoditasAdminPage extends StatefulWidget {
   const KomoditasAdminPage({super.key});
@@ -10,7 +11,7 @@ class KomoditasAdminPage extends StatefulWidget {
 }
 
 class _KomoditasAdminPageState extends State<KomoditasAdminPage> {
-  final _client = DioClient();
+  late final AdminRepository _repository;
   List<Map<String, dynamic>> _list = [];
   bool _loading = true;
   String? _error;
@@ -18,6 +19,7 @@ class _KomoditasAdminPageState extends State<KomoditasAdminPage> {
   @override
   void initState() {
     super.initState();
+    _repository = context.read<AdminRepository>();
     _loadData();
   }
 
@@ -27,15 +29,14 @@ class _KomoditasAdminPageState extends State<KomoditasAdminPage> {
       _error = null;
     });
     try {
-      final res = await _client.dio.get('/komoditas');
-      final raw = res.data is Map ? res.data['data'] : res.data;
+      final items = await _repository.fetchKomoditas();
       setState(() {
-        _list = List<Map<String, dynamic>>.from(raw as List);
+        _list = items;
         _loading = false;
       });
     } on DioException catch (e) {
       setState(() {
-        _error = e.response?.data['error'] ?? 'Gagal memuat data';
+        _error = _repository.getErrorMessage(e, fallback: 'Gagal memuat data');
         _loading = false;
       });
     }
@@ -43,32 +44,37 @@ class _KomoditasAdminPageState extends State<KomoditasAdminPage> {
 
   Future<void> _create(String nama, String satuan, String kategori) async {
     try {
-      await _client.dio.post('/komoditas', data: {
-        'nama': nama,
-        'satuan': satuan,
-        'kategori': kategori,
-      });
+      await _repository.createKomoditas(
+        nama: nama,
+        satuan: satuan,
+        kategori: kategori,
+      );
       _showSnack('Komoditas berhasil ditambahkan');
       _loadData();
     } on DioException catch (e) {
-      _showSnack(e.response?.data['error'] ?? 'Gagal menambahkan',
-          isError: true);
+      _showSnack(
+        _repository.getErrorMessage(e, fallback: 'Gagal menambahkan'),
+        isError: true,
+      );
     }
   }
 
   Future<void> _update(
-      String id, String nama, String satuan, String kategori) async {
+      String id, String nama, String satuan, String kategori,) async {
     try {
-      await _client.dio.put('/komoditas/$id', data: {
-        'nama': nama,
-        'satuan': satuan,
-        'kategori': kategori,
-      });
+      await _repository.updateKomoditas(
+        id: id,
+        nama: nama,
+        satuan: satuan,
+        kategori: kategori,
+      );
       _showSnack('Komoditas berhasil diperbarui');
       _loadData();
     } on DioException catch (e) {
-      _showSnack(e.response?.data['error'] ?? 'Gagal memperbarui',
-          isError: true);
+      _showSnack(
+        _repository.getErrorMessage(e, fallback: 'Gagal memperbarui'),
+        isError: true,
+      );
     }
   }
 
@@ -82,7 +88,7 @@ class _KomoditasAdminPageState extends State<KomoditasAdminPage> {
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Batal')),
+              child: const Text('Batal'),),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Hapus', style: TextStyle(color: Colors.red)),
@@ -93,11 +99,14 @@ class _KomoditasAdminPageState extends State<KomoditasAdminPage> {
     if (confirmed != true) return;
 
     try {
-      await _client.dio.delete('/komoditas/$id');
+      await _repository.deleteKomoditas(id);
       _showSnack('Komoditas berhasil dihapus');
       _loadData();
     } on DioException catch (e) {
-      _showSnack(e.response?.data['error'] ?? 'Gagal menghapus', isError: true);
+      _showSnack(
+        _repository.getErrorMessage(e, fallback: 'Gagal menghapus'),
+        isError: true,
+      );
     }
   }
 
@@ -106,7 +115,7 @@ class _KomoditasAdminPageState extends State<KomoditasAdminPage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg),
       backgroundColor: isError ? Colors.red[700] : const Color(0xFF2E7D32),
-    ));
+    ),);
   }
 
   void _showForm({Map<String, dynamic>? existing}) {
@@ -200,7 +209,7 @@ class _KomoditasAdminPageState extends State<KomoditasAdminPage> {
                     backgroundColor: const Color(0xFF2E7D32),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(12),),
                   ),
                   child: Text(isEdit ? 'Simpan Perubahan' : 'Tambahkan'),
                 ),
@@ -226,12 +235,12 @@ class _KomoditasAdminPageState extends State<KomoditasAdminPage> {
       ),
       body: CustomScrollView(
         slivers: [
-          SliverAppBar(
+          const SliverAppBar(
             expandedHeight: 100,
             pinned: true,
-            backgroundColor: const Color(0xFF2E7D32),
+            backgroundColor: Color(0xFF2E7D32),
             foregroundColor: Colors.white,
-            flexibleSpace: const FlexibleSpaceBar(
+            flexibleSpace: FlexibleSpaceBar(
               title:
                   Text('Manajemen Komoditas', style: TextStyle(fontSize: 16)),
               background: DecoratedBox(
@@ -246,7 +255,7 @@ class _KomoditasAdminPageState extends State<KomoditasAdminPage> {
           if (_loading)
             const SliverFillRemaining(
               child: Center(
-                  child: CircularProgressIndicator(color: Color(0xFF2E7D32))),
+                  child: CircularProgressIndicator(color: Color(0xFF2E7D32)),),
             )
           else if (_error != null)
             SliverFillRemaining(child: _buildError())
@@ -254,7 +263,7 @@ class _KomoditasAdminPageState extends State<KomoditasAdminPage> {
             const SliverFillRemaining(
               child: Center(
                   child: Text('Belum ada komoditas',
-                      style: TextStyle(color: Colors.grey))),
+                      style: TextStyle(color: Colors.grey),),),
             )
           else
             SliverPadding(
@@ -284,9 +293,9 @@ class _KomoditasAdminPageState extends State<KomoditasAdminPage> {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 6,
-              offset: const Offset(0, 2)),
+              offset: const Offset(0, 2),),
         ],
       ),
       child: ListTile(
@@ -299,10 +308,10 @@ class _KomoditasAdminPageState extends State<KomoditasAdminPage> {
             borderRadius: BorderRadius.circular(12),
           ),
           child: const Icon(Icons.inventory_2_outlined,
-              color: Color(0xFF2E7D32), size: 22),
+              color: Color(0xFF2E7D32), size: 22,),
         ),
         title: Text(nama,
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),),
         subtitle: Text(
           '${satuan.isNotEmpty ? satuan : '-'}${kategori.isNotEmpty ? ' · $kategori' : ''}',
           style: const TextStyle(fontSize: 12, color: Colors.grey),
@@ -312,13 +321,13 @@ class _KomoditasAdminPageState extends State<KomoditasAdminPage> {
           children: [
             IconButton(
               icon: const Icon(Icons.edit_outlined,
-                  size: 20, color: Color(0xFF2E7D32)),
+                  size: 20, color: Color(0xFF2E7D32),),
               onPressed: () => _showForm(existing: item),
               tooltip: 'Edit',
             ),
             IconButton(
               icon: const Icon(Icons.delete_outline,
-                  size: 20, color: Colors.redAccent),
+                  size: 20, color: Colors.redAccent,),
               onPressed: () => _delete(id, nama),
               tooltip: 'Hapus',
             ),
@@ -336,7 +345,7 @@ class _KomoditasAdminPageState extends State<KomoditasAdminPage> {
           const Icon(Icons.error_outline, size: 48, color: Colors.grey),
           const SizedBox(height: 12),
           Text(_error ?? 'Terjadi kesalahan',
-              style: const TextStyle(color: Colors.grey)),
+              style: const TextStyle(color: Colors.grey),),
           const SizedBox(height: 16),
           ElevatedButton.icon(
             onPressed: _loadData,

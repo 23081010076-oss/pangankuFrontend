@@ -1,13 +1,13 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:dio/dio.dart';
-import '../../../core/network/dio_client.dart';
+import '../data/distribusi_repository.dart';
 import 'distribusi_event.dart';
 import 'distribusi_state.dart';
 
 class DistribusiBloc extends Bloc<DistribusiEvent, DistribusiState> {
-  final DioClient _client;
+  final DistribusiRepository _repository;
 
-  DistribusiBloc(this._client) : super(DistribusiInitial()) {
+  DistribusiBloc(this._repository) : super(DistribusiInitial()) {
     on<LoadDistribusiList>(_onLoad);
     on<CreateDistribusi>(_onCreateDistribusi);
     on<UpdateDistribusiStatus>(_onUpdateDistribusiStatus);
@@ -19,22 +19,20 @@ class DistribusiBloc extends Bloc<DistribusiEvent, DistribusiState> {
       LoadDistribusiList event, Emitter<DistribusiState> emit,) async {
     emit(DistribusiLoading());
     try {
-      final params = <String, dynamic>{'limit': 50};
-      if (event.status != null && event.status != 'semua') {
-        params['status'] = event.status;
-      }
-
-      final response =
-          await _client.dio.get('/distribusi', queryParameters: params);
-      final data = response.data;
-      final List<dynamic> list = data['data'] ?? (data is List ? data : []);
+      final list = await _repository.fetchDistribusiList(status: event.status);
       final items = list
-          .map((j) => DistribusiItem.fromJson(j as Map<String, dynamic>))
+          .map((j) => DistribusiItem.fromJson(j))
           .toList();
       emit(DistribusiLoaded(items));
     } on DioException catch (e) {
-      emit(DistribusiError(e.response?.data?['error'] as String? ??
-          'Gagal memuat data distribusi',),);
+      emit(
+        DistribusiError(
+          _repository.getErrorMessage(
+            e,
+            fallback: 'Gagal memuat data distribusi',
+          ),
+        ),
+      );
     } catch (e) {
       emit(DistribusiError('Terjadi kesalahan: $e'));
     }
@@ -49,41 +47,44 @@ class DistribusiBloc extends Bloc<DistribusiEvent, DistribusiState> {
       CreateDistribusi event, Emitter<DistribusiState> emit,) async {
     emit(DistribusiSaving());
     try {
-      final Map<String, dynamic> body = {
-        'dari_kecamatan_id': event.dariKecamatanId,
-        'ke_kecamatan_id': event.keKecamatanId,
-        'komoditas_id': event.komoditasId,
-        'jumlah_kg': event.jumlahKg,
-        'jadwal_berangkat': event.jadwalBerangkat,
-      };
-      if (event.namaDriver != null) body['nama_driver'] = event.namaDriver;
-      if (event.namaKendaraan != null) body['nama_kendaraan'] = event.namaKendaraan;
-
-      final response = await _client.dio.post('/distribusi', data: body);
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        emit(DistribusiSaved());
-        add(LoadDistribusiList());
-      } else {
-        emit(DistribusiError('Gagal membuat jadwal distribusi'));
-      }
+      await _repository.createDistribusi(
+        dariKecamatanId: event.dariKecamatanId,
+        keKecamatanId: event.keKecamatanId,
+        komoditasId: event.komoditasId,
+        jumlahKg: event.jumlahKg,
+        jadwalBerangkat: event.jadwalBerangkat,
+        namaDriver: event.namaDriver,
+        namaKendaraan: event.namaKendaraan,
+      );
+      emit(DistribusiSaved());
+      add(LoadDistribusiList());
     } on DioException catch (e) {
-      emit(DistribusiError(e.response?.data is Map
-          ? e.response!.data['error'] ?? 'Gagal membuat jadwal'
-          : 'Gagal membuat jadwal',),);
+      emit(
+        DistribusiError(
+          _repository.getErrorMessage(e, fallback: 'Gagal membuat jadwal'),
+        ),
+      );
     }
   }
 
   Future<void> _onUpdateDistribusiStatus(
       UpdateDistribusiStatus event, Emitter<DistribusiState> emit,) async {
     try {
-      await _client.dio.put(
-          '/distribusi/${event.id}/status', data: {'status': event.status},);
+      await _repository.updateDistribusiStatus(
+        id: event.id,
+        status: event.status,
+      );
       emit(DistribusiStatusUpdated());
       add(LoadDistribusiList());
     } on DioException catch (e) {
-      emit(DistribusiError(e.response?.data is Map
-          ? e.response!.data['error'] ?? 'Gagal memperbarui status'
-          : 'Gagal memperbarui status',),);
+      emit(
+        DistribusiError(
+          _repository.getErrorMessage(
+            e,
+            fallback: 'Gagal memperbarui status',
+          ),
+        ),
+      );
     }
   }
 
@@ -91,13 +92,18 @@ class DistribusiBloc extends Bloc<DistribusiEvent, DistribusiState> {
       DeleteDistribusi event, Emitter<DistribusiState> emit,) async {
     emit(DistribusiSaving());
     try {
-      await _client.dio.delete('/distribusi/${event.id}');
+      await _repository.deleteDistribusi(event.id);
       emit(DistribusiSaved());
       add(LoadDistribusiList());
     } on DioException catch (e) {
-      emit(DistribusiError(e.response?.data is Map
-          ? e.response!.data['error'] ?? 'Gagal menghapus distribusi'
-          : 'Gagal menghapus distribusi',),);
+      emit(
+        DistribusiError(
+          _repository.getErrorMessage(
+            e,
+            fallback: 'Gagal menghapus distribusi',
+          ),
+        ),
+      );
     }
   }
 }

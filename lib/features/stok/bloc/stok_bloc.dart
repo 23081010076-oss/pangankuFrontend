@@ -1,13 +1,13 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:dio/dio.dart';
-import '../../../core/network/dio_client.dart';
+import '../data/stok_repository.dart';
 import 'stok_event.dart';
 import 'stok_state.dart';
 
 class StokBloc extends Bloc<StokEvent, StokState> {
-  final DioClient _client;
+  final StokRepository _repository;
 
-  StokBloc(this._client) : super(StokInitial()) {
+  StokBloc(this._repository) : super(StokInitial()) {
     on<LoadStokList>(_onLoad);
     on<CreateOrUpdateStok>(_onCreateOrUpdateStok);
     on<DeleteStok>(_onDeleteStok);
@@ -17,20 +17,20 @@ class StokBloc extends Bloc<StokEvent, StokState> {
   Future<void> _onLoad(LoadStokList event, Emitter<StokState> emit) async {
     emit(StokLoading());
     try {
-      final params = <String, dynamic>{'limit': 200};
-      if (event.komoditasId != null) params['komoditas_id'] = event.komoditasId;
-      if (event.kecamatanId != null) params['kecamatan_id'] = event.kecamatanId;
-
-      final response = await _client.dio.get('/stok', queryParameters: params);
-      final data = response.data;
-      final List<dynamic> list = data['data'] ?? (data is List ? data : []);
+      final list = await _repository.fetchStokList(
+        komoditasId: event.komoditasId,
+        kecamatanId: event.kecamatanId,
+      );
       final items = list
-          .map((j) => StokItem.fromJson(j as Map<String, dynamic>))
+          .map((j) => StokItem.fromJson(j))
           .toList();
       emit(StokLoaded(items));
     } on DioException catch (e) {
-      emit(StokError(
-          e.response?.data?['error'] as String? ?? 'Gagal memuat data stok',),);
+      emit(
+        StokError(
+          _repository.getErrorMessage(e, fallback: 'Gagal memuat data stok'),
+        ),
+      );
     } catch (e) {
       emit(StokError('Terjadi kesalahan: $e'));
     }
@@ -44,22 +44,20 @@ class StokBloc extends Bloc<StokEvent, StokState> {
       CreateOrUpdateStok event, Emitter<StokState> emit,) async {
     emit(StokSaving());
     try {
-      final response = await _client.dio.post('/stok', data: {
-        'komoditas_id': event.komoditasId,
-        'kecamatan_id': event.kecamatanId,
-        'stok_kg': event.stokKg,
-        'kapasitas_kg': event.kapasitasKg,
-      },);
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        emit(StokSaved());
-        add(LoadStokList());
-      } else {
-        emit(StokError('Gagal menyimpan stok'));
-      }
+      await _repository.saveStok(
+        komoditasId: event.komoditasId,
+        kecamatanId: event.kecamatanId,
+        stokKg: event.stokKg,
+        kapasitasKg: event.kapasitasKg,
+      );
+      emit(StokSaved());
+      add(LoadStokList());
     } on DioException catch (e) {
-      emit(StokError(e.response?.data is Map
-          ? e.response!.data['error'] ?? 'Gagal menyimpan stok'
-          : 'Gagal menyimpan stok',),);
+      emit(
+        StokError(
+          _repository.getErrorMessage(e, fallback: 'Gagal menyimpan stok'),
+        ),
+      );
     }
   }
 
@@ -67,17 +65,15 @@ class StokBloc extends Bloc<StokEvent, StokState> {
       DeleteStok event, Emitter<StokState> emit,) async {
     emit(StokSaving());
     try {
-      final response = await _client.dio.delete('/stok/${event.id}');
-      if (response.statusCode == 200) {
-        emit(StokSaved());
-        add(LoadStokList());
-      } else {
-        emit(StokError('Gagal menghapus data stok'));
-      }
+      await _repository.deleteStok(event.id);
+      emit(StokSaved());
+      add(LoadStokList());
     } on DioException catch (e) {
-      emit(StokError(e.response?.data is Map
-          ? e.response!.data['error'] ?? 'Gagal menghapus stok'
-          : 'Gagal menghapus stok',),);
+      emit(
+        StokError(
+          _repository.getErrorMessage(e, fallback: 'Gagal menghapus stok'),
+        ),
+      );
     }
   }
 }

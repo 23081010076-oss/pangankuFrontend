@@ -115,7 +115,7 @@ class NotifikasiPage extends StatelessWidget {
                 Icon(Icons.notifications_none, size: 56, color: Colors.grey),
                 SizedBox(height: 12),
                 Text('Tidak ada notifikasi',
-                    style: TextStyle(color: Colors.grey)),
+                    style: TextStyle(color: Colors.grey),),
               ],
             ),
           ),
@@ -147,14 +147,14 @@ class NotifikasiPage extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
         decoration: BoxDecoration(
-          color: item.isRead ? Colors.white : tipeColor.withOpacity(0.05),
+          color: item.isRead ? Colors.white : tipeColor.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: item.isRead ? Colors.grey[200]! : tipeColor.withOpacity(0.3),
+            color: item.isRead ? Colors.grey[200]! : tipeColor.withValues(alpha: 0.3),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 6,
               offset: const Offset(0, 2),
             ),
@@ -168,7 +168,7 @@ class NotifikasiPage extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: tipeColor.withOpacity(0.12),
+                  color: tipeColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(tipeIcon, size: 20, color: tipeColor),

@@ -82,7 +82,7 @@ class StatCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(AppTheme.spaceSM),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: AppTheme.radiusSmall,
                 ),
                 child: Icon(icon, color: color, size: 20),
@@ -187,7 +187,7 @@ class LabelChip extends StatelessWidget {
         vertical: AppTheme.spaceXS,
       ),
       decoration: BoxDecoration(
-        color: outlined ? Colors.transparent : chipColor.withOpacity(0.1),
+        color: outlined ? Colors.transparent : chipColor.withValues(alpha: 0.1),
         border: outlined ? Border.all(color: chipColor, width: 1.5) : null,
         borderRadius: AppTheme.radiusSmall,
       ),
@@ -327,7 +327,7 @@ class ErrorStateWidget extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(AppTheme.spaceLG),
               decoration: BoxDecoration(
-                color: AppTheme.error.withOpacity(0.1),
+                color: AppTheme.error.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -414,7 +414,7 @@ class _ShimmerBoxState extends State<ShimmerBox>
               end: Alignment(1.0 - _controller.value * 2, 0),
               colors: [
                 AppTheme.divider,
-                AppTheme.divider.withOpacity(0.5),
+                AppTheme.divider.withValues(alpha: 0.5),
                 AppTheme.divider,
               ],
             ),

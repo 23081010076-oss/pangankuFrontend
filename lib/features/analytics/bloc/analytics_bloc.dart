@@ -1,13 +1,13 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:dio/dio.dart';
-import '../../../core/network/dio_client.dart';
+import '../data/analytics_repository.dart';
 import 'analytics_event.dart';
 import 'analytics_state.dart';
 
 class AnalyticsBloc extends Bloc<AnalyticsEvent, AnalyticsState> {
-  final DioClient _client;
+  final AnalyticsRepository _repository;
 
-  AnalyticsBloc(this._client) : super(AnalyticsInitial()) {
+  AnalyticsBloc(this._repository) : super(AnalyticsInitial()) {
     on<LoadDashboardStats>(_onLoadDashboardStats);
     on<RefreshDashboardStats>((event, _) => add(LoadDashboardStats(periode: event.periode)));
     on<LoadStatusPangan>(_onLoadStatusPangan);
@@ -19,21 +19,16 @@ class AnalyticsBloc extends Bloc<AnalyticsEvent, AnalyticsState> {
   ) async {
     emit(AnalyticsLoading());
     try {
-      final response = await _client.dio.get(
-        '/analytics/dashboard',
-        queryParameters: {'periode': event.periode},
-      );
-      if (response.statusCode == 200) {
-        final stats =
-            DashboardStats.fromJson(response.data as Map<String, dynamic>);
-        emit(AnalyticsLoaded(stats));
-      } else {
-        emit(AnalyticsError('Gagal memuat data analitik'));
-      }
+      final data = await _repository.fetchDashboardStats(periode: event.periode);
+      final stats = DashboardStats.fromJson(data);
+      emit(AnalyticsLoaded(stats));
     } on DioException catch (e) {
       emit(
         AnalyticsError(
-          e.response?.data['error'] ?? 'Gagal terhubung ke server',
+          _repository.getErrorMessage(
+            e,
+            fallback: 'Gagal terhubung ke server',
+          ),
         ),
       );
     } catch (e) {
@@ -47,18 +42,18 @@ class AnalyticsBloc extends Bloc<AnalyticsEvent, AnalyticsState> {
   ) async {
     emit(StatusPanganLoading());
     try {
-      final response = await _client.dio.get('/analytics/status-pangan');
-      final List<dynamic> raw = (response.data is List)
-          ? response.data as List<dynamic>
-          : (response.data['data'] ?? []) as List<dynamic>;
+      final raw = await _repository.fetchStatusPangan();
       final items = raw
-          .map((e) => StatusPanganItem.fromJson(e as Map<String, dynamic>))
+          .map((e) => StatusPanganItem.fromJson(e))
           .toList();
       emit(StatusPanganLoaded(items));
     } on DioException catch (e) {
       emit(
         StatusPanganError(
-          e.response?.data['error'] ?? 'Gagal terhubung ke server',
+          _repository.getErrorMessage(
+            e,
+            fallback: 'Gagal terhubung ke server',
+          ),
         ),
       );
     } catch (e) {

@@ -1,7 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import '../../../core/network/dio_client.dart';
+import '../data/admin_repository.dart';
 
 class HargaAdminPage extends StatefulWidget {
   const HargaAdminPage({super.key});
@@ -11,7 +12,7 @@ class HargaAdminPage extends StatefulWidget {
 }
 
 class _HargaAdminPageState extends State<HargaAdminPage> {
-  final _client = DioClient();
+  late final AdminRepository _repository;
   final _currFmt = NumberFormat('#,##0', 'id');
 
   List<Map<String, dynamic>> _hargaList = [];
@@ -34,6 +35,7 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
   @override
   void initState() {
     super.initState();
+    _repository = context.read<AdminRepository>();
     _loadMeta();
     _scrollCtrl.addListener(_onScroll);
   }
@@ -56,16 +58,12 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
   Future<void> _loadMeta() async {
     try {
       final results = await Future.wait([
-        _client.dio.get('/komoditas'),
-        _client.dio.get('/kecamatan'),
+        _repository.fetchKomoditas(),
+        _repository.fetchKecamatan(),
       ]);
-      final komRaw = results[0].data;
-      final kecRaw = results[1].data;
       setState(() {
-        _komoditasList = List<Map<String, dynamic>>.from(
-            komRaw is Map ? (komRaw['data'] ?? komRaw) : komRaw);
-        _kecamatanList = List<Map<String, dynamic>>.from(
-            kecRaw is Map ? (kecRaw['data'] ?? kecRaw) : kecRaw);
+        _komoditasList = results[0];
+        _kecamatanList = results[1];
       });
       await _loadHarga(reset: true);
     } catch (e) {
@@ -88,19 +86,14 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
     }
 
     try {
-      final params = <String, dynamic>{
-        'page': _page,
-        'limit': _limit,
-        'order': 'desc',
-      };
-      if (_filterKomoditas != null) params['komoditas_id'] = _filterKomoditas;
-      if (_filterKecamatan != null) params['kecamatan_id'] = _filterKecamatan;
-
-      final res = await _client.dio.get('/harga', queryParameters: params);
-      final raw = res.data;
-      final items = List<Map<String, dynamic>>.from(
-          raw is Map ? (raw['data'] ?? []) : raw);
-      final total = raw is Map ? (raw['total'] as int? ?? 0) : items.length;
+      final result = await _repository.fetchHargaPage(
+        page: _page,
+        limit: _limit,
+        komoditasId: _filterKomoditas,
+        kecamatanId: _filterKecamatan,
+      );
+      final items = List<Map<String, dynamic>>.from(result['items'] as List);
+      final total = result['total'] as int;
 
       setState(() {
         if (reset) {
@@ -125,19 +118,14 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
       _page++;
     });
     try {
-      final params = <String, dynamic>{
-        'page': _page,
-        'limit': _limit,
-        'order': 'desc',
-      };
-      if (_filterKomoditas != null) params['komoditas_id'] = _filterKomoditas;
-      if (_filterKecamatan != null) params['kecamatan_id'] = _filterKecamatan;
-
-      final res = await _client.dio.get('/harga', queryParameters: params);
-      final raw = res.data;
-      final items = List<Map<String, dynamic>>.from(
-          raw is Map ? (raw['data'] ?? []) : raw);
-      final total = raw is Map ? (raw['total'] as int? ?? 0) : items.length;
+      final result = await _repository.fetchHargaPage(
+        page: _page,
+        limit: _limit,
+        komoditasId: _filterKomoditas,
+        kecamatanId: _filterKecamatan,
+      );
+      final items = List<Map<String, dynamic>>.from(result['items'] as List);
+      final total = result['total'] as int;
 
       setState(() {
         _hargaList.addAll(items);
@@ -154,7 +142,7 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
 
   Future<void> _createHarga(Map<String, dynamic> data) async {
     try {
-      await _client.dio.post('/harga', data: data);
+      await _repository.createHarga(data);
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -167,7 +155,10 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
       }
     } on DioException catch (e) {
       if (mounted) {
-        final msg = e.response?.data['error'] ?? 'Gagal menyimpan data';
+        final msg = _repository.getErrorMessage(
+          e,
+          fallback: 'Gagal menyimpan data',
+        );
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(msg), backgroundColor: Colors.red[700]),
         );
@@ -206,7 +197,7 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
                   style: TextStyle(
                       color: Colors.white,
                       fontSize: 15,
-                      fontWeight: FontWeight.w700),
+                      fontWeight: FontWeight.w700,),
                 ),
                 background: Container(
                   decoration: const BoxDecoration(
@@ -216,7 +207,7 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
                       colors: [
                         Color(0xFF1B5E20),
                         Color(0xFF2E7D32),
-                        Color(0xFF43A047)
+                        Color(0xFF43A047),
                       ],
                     ),
                   ),
@@ -229,7 +220,7 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
             if (_loading)
               const SliverFillRemaining(
                 child: Center(
-                    child: CircularProgressIndicator(color: Color(0xFF2E7D32))),
+                    child: CircularProgressIndicator(color: Color(0xFF2E7D32)),),
               )
             else if (_error != null)
               SliverFillRemaining(child: _buildError())
@@ -246,7 +237,7 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
                       'Data historis — tidak dapat diedit',
                       style: TextStyle(fontSize: 11, color: Colors.grey[500]),
                     ),
-                  ]),
+                  ],),
                 ),
               ),
               SliverPadding(
@@ -259,7 +250,7 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
                           padding: EdgeInsets.all(16),
                           child: Center(
                             child: CircularProgressIndicator(
-                                color: Color(0xFF2E7D32)),
+                                color: Color(0xFF2E7D32),),
                           ),
                         );
                       }
@@ -286,12 +277,12 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
               style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: Colors.grey)),
+                  color: Colors.grey,),),
           const SizedBox(height: 8),
           Row(children: [
             Expanded(
               child: DropdownButtonFormField<String?>(
-                value: _filterKomoditas,
+                initialValue: _filterKomoditas,
                 isExpanded: true,
                 decoration: InputDecoration(
                   labelText: 'Komoditas',
@@ -302,19 +293,19 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide.none),
+                      borderSide: BorderSide.none,),
                   enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: Colors.grey[200]!)),
+                      borderSide: BorderSide(color: Colors.grey[200]!),),
                 ),
                 items: [
                   const DropdownMenuItem<String?>(
-                      value: null, child: Text('Semua komoditas')),
+                      value: null, child: Text('Semua komoditas'),),
                   ..._komoditasList.map((k) => DropdownMenuItem<String?>(
                         value: k['id']?.toString(),
                         child: Text(k['nama']?.toString() ?? '',
-                            overflow: TextOverflow.ellipsis),
-                      )),
+                            overflow: TextOverflow.ellipsis,),
+                      ),),
                 ],
                 onChanged: (v) {
                   setState(() => _filterKomoditas = v);
@@ -325,7 +316,7 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
             const SizedBox(width: 10),
             Expanded(
               child: DropdownButtonFormField<String?>(
-                value: _filterKecamatan,
+                initialValue: _filterKecamatan,
                 isExpanded: true,
                 decoration: InputDecoration(
                   labelText: 'Kecamatan',
@@ -336,19 +327,19 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide.none),
+                      borderSide: BorderSide.none,),
                   enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: Colors.grey[200]!)),
+                      borderSide: BorderSide(color: Colors.grey[200]!),),
                 ),
                 items: [
                   const DropdownMenuItem<String?>(
-                      value: null, child: Text('Semua kecamatan')),
+                      value: null, child: Text('Semua kecamatan'),),
                   ..._kecamatanList.map((k) => DropdownMenuItem<String?>(
                         value: k['id']?.toString(),
                         child: Text(k['nama']?.toString() ?? '',
-                            overflow: TextOverflow.ellipsis),
-                      )),
+                            overflow: TextOverflow.ellipsis,),
+                      ),),
                 ],
                 onChanged: (v) {
                   setState(() => _filterKecamatan = v);
@@ -356,7 +347,7 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
                 },
               ),
             ),
-          ]),
+          ],),
         ],
       ),
     );
@@ -381,9 +372,9 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 6,
-              offset: const Offset(0, 2)),
+              offset: const Offset(0, 2),),
         ],
       ),
       child: Padding(
@@ -394,11 +385,11 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
               width: 38,
               height: 38,
               decoration: BoxDecoration(
-                color: const Color(0xFF2E7D32).withOpacity(0.08),
+                color: const Color(0xFF2E7D32).withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(Icons.price_change_outlined,
-                  color: Color(0xFF2E7D32), size: 18),
+                  color: Color(0xFF2E7D32), size: 18,),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -410,7 +401,7 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
                     style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF212121)),
+                        color: Color(0xFF212121),),
                   ),
                   Text(
                     kecamatan['nama']?.toString() ?? '-',
@@ -427,7 +418,7 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
                   style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF2E7D32)),
+                      color: Color(0xFF2E7D32),),
                 ),
                 const SizedBox(height: 2),
                 Row(
@@ -486,7 +477,7 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
             const SizedBox(height: 12),
             Text(_error!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.grey)),
+                style: const TextStyle(color: Colors.grey),),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: () => _loadHarga(reset: true),
@@ -494,7 +485,7 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
               label: const Text('Coba Lagi'),
               style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2E7D32),
-                  foregroundColor: Colors.white),
+                  foregroundColor: Colors.white,),
             ),
           ],
         ),
@@ -583,7 +574,7 @@ class _HargaFormSheetState extends State<_HargaFormSheet> {
                 height: 4,
                 decoration: BoxDecoration(
                     color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2)),
+                    borderRadius: BorderRadius.circular(2),),
               ),
             ),
             const SizedBox(height: 16),
@@ -602,42 +593,42 @@ class _HargaFormSheetState extends State<_HargaFormSheet> {
               key: _formKey,
               child: Column(children: [
                 DropdownButtonFormField<String>(
-                  value: _selKomoditas,
+                  initialValue: _selKomoditas,
                   isExpanded: true,
                   decoration: InputDecoration(
                     labelText: 'Komoditas',
                     border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(12),),
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 12),
+                        horizontal: 12, vertical: 12,),
                   ),
                   items: widget.komoditasList
                       .map((k) => DropdownMenuItem<String>(
                             value: k['id']?.toString(),
                             child: Text(k['nama']?.toString() ?? '',
-                                overflow: TextOverflow.ellipsis),
-                          ))
+                                overflow: TextOverflow.ellipsis,),
+                          ),)
                       .toList(),
                   onChanged: (v) => setState(() => _selKomoditas = v),
                   validator: (v) => v == null ? 'Pilih komoditas' : null,
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: _selKecamatan,
+                  initialValue: _selKecamatan,
                   isExpanded: true,
                   decoration: InputDecoration(
                     labelText: 'Kecamatan',
                     border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(12),),
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 12),
+                        horizontal: 12, vertical: 12,),
                   ),
                   items: widget.kecamatanList
                       .map((k) => DropdownMenuItem<String>(
                             value: k['id']?.toString(),
                             child: Text(k['nama']?.toString() ?? '',
-                                overflow: TextOverflow.ellipsis),
-                          ))
+                                overflow: TextOverflow.ellipsis,),
+                          ),)
                       .toList(),
                   onChanged: (v) => setState(() => _selKecamatan = v),
                   validator: (v) => v == null ? 'Pilih kecamatan' : null,
@@ -651,7 +642,7 @@ class _HargaFormSheetState extends State<_HargaFormSheet> {
                     labelText: 'Harga per kg',
                     prefixText: 'Rp ',
                     border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(12),),
                   ),
                   validator: (v) {
                     if (v == null || v.isEmpty) return 'Masukkan harga';
@@ -674,7 +665,7 @@ class _HargaFormSheetState extends State<_HargaFormSheet> {
                         suffixIcon:
                             const Icon(Icons.edit_calendar_outlined, size: 18),
                         border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                            borderRadius: BorderRadius.circular(12),),
                       ),
                       controller: TextEditingController(text: tanggalFmt),
                     ),
@@ -690,21 +681,21 @@ class _HargaFormSheetState extends State<_HargaFormSheet> {
                       backgroundColor: const Color(0xFF2E7D32),
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(12),),
                     ),
                     child: _saving
                         ? const SizedBox(
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(
-                                color: Colors.white, strokeWidth: 2))
+                                color: Colors.white, strokeWidth: 2,),)
                         : const Text('Simpan',
-                            style: TextStyle(fontWeight: FontWeight.w600)),
+                            style: TextStyle(fontWeight: FontWeight.w600),),
                   ),
                 ),
-              ]),
+              ],),
             ),
-          ]),
+          ],),
         ),
       ),
     );
@@ -738,7 +729,7 @@ class _EmptyState extends StatelessWidget {
             Icon(Icons.price_change_outlined, size: 64, color: Colors.grey),
             SizedBox(height: 12),
             Text('Belum ada data harga',
-                style: TextStyle(color: Colors.grey, fontSize: 14)),
+                style: TextStyle(color: Colors.grey, fontSize: 14),),
           ],
         ),
       ),

@@ -1,8 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import '../../../core/network/dio_client.dart';
+import '../data/harga_repository.dart';
 
 class ForecastPage extends StatefulWidget {
   const ForecastPage({super.key});
@@ -12,7 +13,7 @@ class ForecastPage extends StatefulWidget {
 }
 
 class _ForecastPageState extends State<ForecastPage> {
-  final _client = DioClient();
+  late final HargaRepository _repository;
   final _currencyFmt = NumberFormat('#,###', 'id');
 
   List<Map<String, dynamic>> _komoditasList = [];
@@ -20,7 +21,6 @@ class _ForecastPageState extends State<ForecastPage> {
 
   String? _selectedKomoditasId;
   String? _selectedKecamatanId;
-  String _selectedKomoditasNama = '';
 
   bool _loadingMeta = true;
   bool _loadingForecast = false;
@@ -33,6 +33,7 @@ class _ForecastPageState extends State<ForecastPage> {
   @override
   void initState() {
     super.initState();
+    _repository = context.read<HargaRepository>();
     _loadMeta();
   }
 
@@ -40,19 +41,13 @@ class _ForecastPageState extends State<ForecastPage> {
     setState(() => _loadingMeta = true);
     try {
       final results = await Future.wait([
-        _client.dio.get('/komoditas'),
-        _client.dio.get('/kecamatan'),
+        _repository.fetchKomoditas(),
+        _repository.fetchKecamatan(),
       ]);
-      final komoditasRaw = results[0].data;
-      final kecamatanRaw = results[1].data;
 
       setState(() {
-        _komoditasList = List<Map<String, dynamic>>.from(
-          komoditasRaw is List ? komoditasRaw : (komoditasRaw['data'] ?? []),
-        );
-        _kecamatanList = List<Map<String, dynamic>>.from(
-          kecamatanRaw is List ? kecamatanRaw : (kecamatanRaw['data'] ?? []),
-        );
+        _komoditasList = results[0];
+        _kecamatanList = results[1];
         _loadingMeta = false;
       });
     } catch (e) {
@@ -81,15 +76,10 @@ class _ForecastPageState extends State<ForecastPage> {
     });
 
     try {
-      final queryParams = <String, String>{
-        'komoditas_id': _selectedKomoditasId!,
-        if (_selectedKecamatanId != null) 'kecamatan_id': _selectedKecamatanId!,
-      };
-      final res = await _client.dio.get(
-        '/harga/forecast',
-        queryParameters: queryParams,
+      final data = await _repository.fetchForecast(
+        komoditasId: _selectedKomoditasId!,
+        kecamatanId: _selectedKecamatanId,
       );
-      final data = res.data as Map<String, dynamic>;
       setState(() {
         _predictions = List<double>.from(
           (data['predictions'] as List).map((v) => (v as num).toDouble()),
@@ -99,7 +89,10 @@ class _ForecastPageState extends State<ForecastPage> {
         _loadingForecast = false;
       });
     } on DioException catch (e) {
-      final msg = e.response?.data['error'] ?? 'Gagal memuat prediksi';
+      final msg = _repository.getErrorMessage(
+        e,
+        fallback: 'Gagal memuat prediksi',
+      );
       setState(() {
         _error = msg;
         _loadingForecast = false;
@@ -123,7 +116,7 @@ class _ForecastPageState extends State<ForecastPage> {
                 style: TextStyle(
                     color: Colors.white,
                     fontSize: 16,
-                    fontWeight: FontWeight.w700),
+                    fontWeight: FontWeight.w700,),
               ),
               background: Container(
                 decoration: const BoxDecoration(
@@ -145,7 +138,7 @@ class _ForecastPageState extends State<ForecastPage> {
           if (_loadingMeta)
             const SliverFillRemaining(
               child: Center(
-                  child: CircularProgressIndicator(color: Color(0xFF2E7D32))),
+                  child: CircularProgressIndicator(color: Color(0xFF2E7D32)),),
             )
           else
             SliverToBoxAdapter(
@@ -161,7 +154,7 @@ class _ForecastPageState extends State<ForecastPage> {
                         child: Padding(
                           padding: EdgeInsets.all(48),
                           child: CircularProgressIndicator(
-                              color: Color(0xFF2E7D32)),
+                              color: Color(0xFF2E7D32),),
                         ),
                       )
                     else if (_error != null)
@@ -192,9 +185,9 @@ class _ForecastPageState extends State<ForecastPage> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 8,
-              offset: const Offset(0, 2))
+              offset: const Offset(0, 2),),
         ],
       ),
       child: Column(
@@ -205,21 +198,21 @@ class _ForecastPageState extends State<ForecastPage> {
             style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF1B5E20)),
+                color: Color(0xFF1B5E20),),
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            value: _selectedKomoditasId,
+            initialValue: _selectedKomoditasId,
             decoration: InputDecoration(
               labelText: 'Komoditas *',
               prefixIcon: const Icon(Icons.inventory_2_outlined,
-                  color: Color(0xFF2E7D32)),
+                  color: Color(0xFF2E7D32),),
               border:
                   OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
               focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide:
-                      const BorderSide(color: Color(0xFF2E7D32), width: 2)),
+                      const BorderSide(color: Color(0xFF2E7D32), width: 2),),
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             ),
@@ -228,14 +221,11 @@ class _ForecastPageState extends State<ForecastPage> {
                 .map((k) => DropdownMenuItem<String>(
                       value: k['id'] as String,
                       child: Text(k['nama'] as String? ?? ''),
-                    ))
+                    ),)
                 .toList(),
             onChanged: (v) {
               setState(() {
                 _selectedKomoditasId = v;
-                _selectedKomoditasNama = _komoditasList.firstWhere(
-                    (k) => k['id'] == v,
-                    orElse: () => {'nama': ''})['nama'] as String;
                 _predictions = [];
                 _error = null;
               });
@@ -243,17 +233,17 @@ class _ForecastPageState extends State<ForecastPage> {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            value: _selectedKecamatanId,
+            initialValue: _selectedKecamatanId,
             decoration: InputDecoration(
               labelText: 'Kecamatan (opsional)',
               prefixIcon: const Icon(Icons.location_on_outlined,
-                  color: Color(0xFF2E7D32)),
+                  color: Color(0xFF2E7D32),),
               border:
                   OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
               focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                   borderSide:
-                      const BorderSide(color: Color(0xFF2E7D32), width: 2)),
+                      const BorderSide(color: Color(0xFF2E7D32), width: 2),),
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             ),
@@ -266,7 +256,7 @@ class _ForecastPageState extends State<ForecastPage> {
               ..._kecamatanList.map((k) => DropdownMenuItem<String>(
                     value: k['id'] as String,
                     child: Text(k['nama'] as String? ?? ''),
-                  ))
+                  ),),
             ],
             onChanged: (v) {
               setState(() {
@@ -288,7 +278,7 @@ class _ForecastPageState extends State<ForecastPage> {
                 backgroundColor: const Color(0xFF2E7D32),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
+                    borderRadius: BorderRadius.circular(10),),
               ),
             ),
           ),
@@ -327,9 +317,9 @@ class _ForecastPageState extends State<ForecastPage> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.08),
+              color: color.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: color.withOpacity(0.3)),
+              border: Border.all(color: color.withValues(alpha: 0.3)),
             ),
             child: Row(
               children: [
@@ -341,13 +331,13 @@ class _ForecastPageState extends State<ForecastPage> {
                     children: [
                       Text('Prediksi 7 Hari',
                           style:
-                              TextStyle(fontSize: 11, color: Colors.grey[600])),
+                              TextStyle(fontSize: 11, color: Colors.grey[600]),),
                       Text(
                         label,
                         style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
-                            color: color),
+                            color: color,),
                       ),
                     ],
                   ),
@@ -356,7 +346,7 @@ class _ForecastPageState extends State<ForecastPage> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.15),
+                      color: color.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -391,9 +381,9 @@ class _ForecastPageState extends State<ForecastPage> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 8,
-              offset: const Offset(0, 2))
+              offset: const Offset(0, 2),),
         ],
       ),
       child: Column(
@@ -406,7 +396,7 @@ class _ForecastPageState extends State<ForecastPage> {
               style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: Colors.grey[700]),
+                  color: Colors.grey[700],),
             ),
           ),
           SizedBox(
@@ -418,13 +408,13 @@ class _ForecastPageState extends State<ForecastPage> {
                 gridData: FlGridData(
                   show: true,
                   getDrawingHorizontalLine: (_) => FlLine(
-                    color: Colors.grey.withOpacity(0.15),
+                    color: Colors.grey.withValues(alpha: 0.15),
                     strokeWidth: 1,
                     dashArray: [4, 4],
                   ),
                   drawVerticalLine: true,
                   getDrawingVerticalLine: (_) => FlLine(
-                    color: Colors.grey.withOpacity(0.15),
+                    color: Colors.grey.withValues(alpha: 0.15),
                     strokeWidth: 1,
                     dashArray: [4, 4],
                   ),
@@ -462,16 +452,16 @@ class _ForecastPageState extends State<ForecastPage> {
                           child: Text(
                             DateFormat('dd/MM').format(day),
                             style: TextStyle(
-                                fontSize: 10, color: Colors.grey[500]),
+                                fontSize: 10, color: Colors.grey[500],),
                           ),
                         );
                       },
                     ),
                   ),
                   topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
+                      sideTitles: SideTitles(showTitles: false),),
                   rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
+                      sideTitles: SideTitles(showTitles: false),),
                 ),
                 lineBarsData: [
                   LineChartBarData(
@@ -482,7 +472,7 @@ class _ForecastPageState extends State<ForecastPage> {
                     barWidth: 3,
                     isStrokeCapRound: true,
                     shadow: BoxShadow(
-                      color: const Color(0xFF2E7D32).withOpacity(0.3),
+                      color: const Color(0xFF2E7D32).withValues(alpha: 0.3),
                       blurRadius: 4,
                       offset: const Offset(0, 2),
                     ),
@@ -503,8 +493,8 @@ class _ForecastPageState extends State<ForecastPage> {
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          const Color(0xFF2E7D32).withOpacity(0.35),
-                          const Color(0xFF2E7D32).withOpacity(0.0),
+                          const Color(0xFF2E7D32).withValues(alpha: 0.35),
+                          const Color(0xFF2E7D32).withValues(alpha: 0.0),
                         ],
                       ),
                     ),
@@ -514,7 +504,7 @@ class _ForecastPageState extends State<ForecastPage> {
                   handleBuiltInTouches: true,
                   touchTooltipData: LineTouchTooltipData(
                     getTooltipColor: (_) =>
-                        const Color(0xFF1E293B).withOpacity(0.9),
+                        const Color(0xFF1E293B).withValues(alpha: 0.9),
                     tooltipRoundedRadius: 8,
                     fitInsideHorizontally: true,
                     tooltipBorder:
@@ -560,9 +550,9 @@ class _ForecastPageState extends State<ForecastPage> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 8,
-              offset: const Offset(0, 2))
+              offset: const Offset(0, 2),),
         ],
       ),
       child: Column(
@@ -573,14 +563,14 @@ class _ForecastPageState extends State<ForecastPage> {
             child: Row(
               children: [
                 const Icon(Icons.table_rows_outlined,
-                    size: 16, color: Color(0xFF2E7D32)),
+                    size: 16, color: Color(0xFF2E7D32),),
                 const SizedBox(width: 6),
                 Text(
                   'Rincian Prediksi',
                   style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      color: Colors.grey[700]),
+                      color: Colors.grey[700],),
                 ),
               ],
             ),
@@ -590,31 +580,31 @@ class _ForecastPageState extends State<ForecastPage> {
           Container(
             color: const Color(0xFFE8F5E9),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
+            child: const Row(
               children: [
-                const Expanded(
+                Expanded(
                     flex: 3,
                     child: Text('Tanggal',
                         style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            color: Color(0xFF1B5E20)))),
-                const Expanded(
+                            color: Color(0xFF1B5E20),),),),
+                Expanded(
                     flex: 3,
                     child: Text('Prediksi Harga',
                         style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            color: Color(0xFF1B5E20)),
-                        textAlign: TextAlign.right)),
+                            color: Color(0xFF1B5E20),),
+                        textAlign: TextAlign.right,),),
                 Expanded(
                     flex: 2,
                     child: Text('Status',
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
-                            color: Color(0xFF1B5E20)),
-                        textAlign: TextAlign.center)),
+                            color: Color(0xFF1B5E20),),
+                        textAlign: TextAlign.center,),),
               ],
             ),
           ),
@@ -640,17 +630,17 @@ class _ForecastPageState extends State<ForecastPage> {
                         flex: 3,
                         child: Text(
                           'Rp ${_currencyFmt.format(_predictions[i])}',
-                          style: TextStyle(
+                          style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: const Color(0xFF1B5E20)),
+                              color: Color(0xFF1B5E20),),
                           textAlign: TextAlign.right,
                         ),
                       ),
-                      Expanded(
+                      const Expanded(
                         flex: 2,
                         child: Center(
-                          child: const Icon(Icons.check_circle, size: 16, color: Color(0xFF4CAF50)),
+                          child: Icon(Icons.check_circle, size: 16, color: Color(0xFF4CAF50)),
                         ),
                       ),
                     ],
@@ -658,7 +648,7 @@ class _ForecastPageState extends State<ForecastPage> {
                 ),
                 if (i < _predictions.length - 1)
                   const Divider(
-                      height: 1, indent: 16, color: Color(0xFFF0F0F0)),
+                      height: 1, indent: 16, color: Color(0xFFF0F0F0),),
               ],
             );
           }),
@@ -672,9 +662,9 @@ class _ForecastPageState extends State<ForecastPage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.red.withOpacity(0.06),
+        color: Colors.red.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.red.withOpacity(0.2)),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
       ),
       child: Column(
         children: [

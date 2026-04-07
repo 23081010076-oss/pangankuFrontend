@@ -1,11 +1,11 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import '../../../core/network/dio_client.dart';
 import '../../analytics/bloc/analytics_bloc.dart';
 import '../../analytics/bloc/analytics_event.dart';
 import '../../analytics/bloc/analytics_state.dart';
+import '../../analytics/data/analytics_repository.dart';
 
 class PetaSebaranPage extends StatelessWidget {
   const PetaSebaranPage({super.key});
@@ -13,7 +13,9 @@ class PetaSebaranPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => AnalyticsBloc(DioClient())..add(LoadStatusPangan()),
+      create: (context) =>
+          AnalyticsBloc(context.read<AnalyticsRepository>())
+            ..add(LoadStatusPangan()),
       child: const _PetaSebaranView(),
     );
   }
@@ -85,10 +87,10 @@ class _PetaSebaranViewState extends State<_PetaSebaranView> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const Icon(Icons.signal_wifi_off_outlined,
-                            size: 48, color: Colors.grey),
+                            size: 48, color: Colors.grey,),
                         const SizedBox(height: 12),
                         Text(state.message,
-                            style: const TextStyle(color: Colors.grey)),
+                            style: const TextStyle(color: Colors.grey),),
                         const SizedBox(height: 12),
                         TextButton(
                           onPressed: () => context
@@ -163,7 +165,7 @@ class _PetaSebaranViewState extends State<_PetaSebaranView> {
                 child: Container(
                   padding: const EdgeInsets.all(7),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child:
@@ -174,11 +176,11 @@ class _PetaSebaranViewState extends State<_PetaSebaranView> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(Icons.map_outlined,
-                    color: Colors.white, size: 20),
+                    color: Colors.white, size: 20,),
               ),
               const SizedBox(width: 12),
               const Expanded(
@@ -190,10 +192,10 @@ class _PetaSebaranViewState extends State<_PetaSebaranView> {
                           color: Colors.white,
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
-                        )),
+                        ),),
                     Text('Kabupaten Lamongan',
                         style:
-                            TextStyle(color: Colors.white70, fontSize: 10)),
+                            TextStyle(color: Colors.white70, fontSize: 10),),
                   ],
                 ),
               ),
@@ -206,16 +208,16 @@ class _PetaSebaranViewState extends State<_PetaSebaranView> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                        color: Colors.white.withOpacity(0.4), width: 1),
+                        color: Colors.white.withValues(alpha: 0.4), width: 1,),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(Icons.layers_outlined,
-                          size: 14, color: Colors.white),
+                          size: 14, color: Colors.white,),
                       const SizedBox(width: 4),
                       Text(
                         _selectedLayer == 'stok' ? 'Layer: Stok' : 'Layer: Harga',
@@ -236,11 +238,11 @@ class _PetaSebaranViewState extends State<_PetaSebaranView> {
                 child: Container(
                   padding: const EdgeInsets.all(7),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(Icons.refresh,
-                      size: 16, color: Colors.white),
+                      size: 16, color: Colors.white,),
                 ),
               ),
             ],
@@ -257,7 +259,7 @@ class _PetaSebaranViewState extends State<_PetaSebaranView> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.12),
+            color: Colors.black.withValues(alpha: 0.12),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -301,18 +303,18 @@ class _PetaSebaranViewState extends State<_PetaSebaranView> {
                           children: [
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 3),
+                                  horizontal: 6, vertical: 3,),
                               decoration: BoxDecoration(
                                 color: isSelected
                                     ? Colors.white
-                                    : color.withOpacity(0.92),
+                                    : color.withValues(alpha: 0.92),
                                 borderRadius: BorderRadius.circular(8),
                                 border: isSelected
                                     ? Border.all(color: color, width: 2)
                                     : null,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.25),
+                                    color: Colors.black.withValues(alpha: 0.25),
                                     blurRadius: 4,
                                     offset: const Offset(0, 2),
                                   ),
@@ -336,7 +338,7 @@ class _PetaSebaranViewState extends State<_PetaSebaranView> {
                                 color: color,
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                    color: Colors.white, width: 1.5),
+                                    color: Colors.white, width: 1.5,),
                               ),
                             ),
                           ],
@@ -369,7 +371,7 @@ class _PetaSebaranViewState extends State<_PetaSebaranView> {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.18),
+            color: Colors.black.withValues(alpha: 0.18),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -381,7 +383,7 @@ class _PetaSebaranViewState extends State<_PetaSebaranView> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
+              color: color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(Icons.location_on, color: color, size: 22),
@@ -404,18 +406,18 @@ class _PetaSebaranViewState extends State<_PetaSebaranView> {
                   children: [
                     _InfoChip(
                         label: 'Stok: ${item.stokPersen.toStringAsFixed(0)}%',
-                        color: color),
+                        color: color,),
                     _InfoChip(
                         label: 'Harga: ${item.hargaTrend}',
                         color: item.hargaTrend == 'NAIK'
                             ? const Color(0xFFC62828)
                             : item.hargaTrend == 'TURUN'
                                 ? const Color(0xFF2E7D32)
-                                : Colors.blueGrey),
+                                : Colors.blueGrey,),
                     if (item.jumlahLaporanAktif > 0)
                       _InfoChip(
                           label: '${item.jumlahLaporanAktif} laporan',
-                          color: const Color(0xFFF57C00)),
+                          color: const Color(0xFFF57C00),),
                   ],
                 ),
               ],
@@ -424,7 +426,7 @@ class _PetaSebaranViewState extends State<_PetaSebaranView> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
@@ -479,7 +481,7 @@ class _PetaSebaranViewState extends State<_PetaSebaranView> {
     if (items.isEmpty) {
       return Center(
         child: Text('Belum ada data kecamatan',
-            style: TextStyle(color: Colors.grey[400])),
+            style: TextStyle(color: Colors.grey[400]),),
       );
     }
     return Container(
@@ -489,7 +491,7 @@ class _PetaSebaranViewState extends State<_PetaSebaranView> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -531,7 +533,7 @@ class _PetaSebaranViewState extends State<_PetaSebaranView> {
                   },
                   child: Container(
                     color: isSelected
-                        ? color.withOpacity(0.06)
+                        ? color.withValues(alpha: 0.06)
                         : Colors.transparent,
                     padding: const EdgeInsets.symmetric(vertical: 9),
                     child: Row(
@@ -564,9 +566,9 @@ class _PetaSebaranViewState extends State<_PetaSebaranView> {
                         const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
+                              horizontal: 6, vertical: 2,),
                           decoration: BoxDecoration(
-                            color: color.withOpacity(0.1),
+                            color: color.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -601,13 +603,13 @@ class _InfoChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         label,
         style: TextStyle(
-            fontSize: 9, fontWeight: FontWeight.w600, color: color),
+            fontSize: 9, fontWeight: FontWeight.w600, color: color,),
       ),
     );
   }
@@ -622,7 +624,7 @@ class _StatusPill extends StatelessWidget {
       {required this.label,
       required this.count,
       required this.color,
-      required this.bg});
+      required this.bg,});
 
   @override
   Widget build(BuildContext context) {
@@ -638,14 +640,14 @@ class _StatusPill extends StatelessWidget {
               style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
-                  color: color),
+                  color: color,),
             ),
             Text(
               label,
               style: TextStyle(
                   fontSize: 9,
                   color: color,
-                  fontWeight: FontWeight.w600),
+                  fontWeight: FontWeight.w600,),
             ),
           ],
         ),

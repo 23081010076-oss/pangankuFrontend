@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:dio/dio.dart';
-import '../../../core/network/dio_client.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../data/admin_repository.dart';
 
 class KecamatanAdminPage extends StatefulWidget {
   const KecamatanAdminPage({super.key});
@@ -11,7 +12,7 @@ class KecamatanAdminPage extends StatefulWidget {
 }
 
 class _KecamatanAdminPageState extends State<KecamatanAdminPage> {
-  final _client = DioClient();
+  late final AdminRepository _repository;
   List<Map<String, dynamic>> _list = [];
   bool _loading = true;
   String? _error;
@@ -19,6 +20,7 @@ class _KecamatanAdminPageState extends State<KecamatanAdminPage> {
   @override
   void initState() {
     super.initState();
+    _repository = context.read<AdminRepository>();
     _loadData();
   }
 
@@ -28,51 +30,55 @@ class _KecamatanAdminPageState extends State<KecamatanAdminPage> {
       _error = null;
     });
     try {
-      final res = await _client.dio.get('/kecamatan');
-      final raw = res.data is Map ? res.data['data'] : res.data;
+      final raw = await _repository.fetchKecamatan();
       setState(() {
-        _list = List<Map<String, dynamic>>.from(raw as List);
+        _list = raw;
         _loading = false;
       });
     } on DioException catch (e) {
       setState(() {
-        _error = e.response?.data['error'] ?? 'Gagal memuat data';
+        _error = _repository.getErrorMessage(e, fallback: 'Gagal memuat data');
         _loading = false;
       });
     }
   }
 
   Future<void> _create(
-      String nama, double lat, double lng, double luasHa) async {
+      String nama, double lat, double lng, double luasHa,) async {
     try {
-      await _client.dio.post('/kecamatan', data: {
-        'nama': nama,
-        'lat': lat,
-        'lng': lng,
-        'luas_ha': luasHa,
-      });
+      await _repository.createKecamatan(
+        nama: nama,
+        lat: lat,
+        lng: lng,
+        luasHa: luasHa,
+      );
       _showSnack('Kecamatan berhasil ditambahkan');
       _loadData();
     } on DioException catch (e) {
-      _showSnack(e.response?.data['error'] ?? 'Gagal menambahkan',
-          isError: true);
+      _showSnack(
+        _repository.getErrorMessage(e, fallback: 'Gagal menambahkan'),
+        isError: true,
+      );
     }
   }
 
   Future<void> _update(
-      String id, String nama, double lat, double lng, double luasHa) async {
+      String id, String nama, double lat, double lng, double luasHa,) async {
     try {
-      await _client.dio.put('/kecamatan/$id', data: {
-        'nama': nama,
-        'lat': lat,
-        'lng': lng,
-        'luas_ha': luasHa,
-      });
+      await _repository.updateKecamatan(
+        id: id,
+        nama: nama,
+        lat: lat,
+        lng: lng,
+        luasHa: luasHa,
+      );
       _showSnack('Kecamatan berhasil diperbarui');
       _loadData();
     } on DioException catch (e) {
-      _showSnack(e.response?.data['error'] ?? 'Gagal memperbarui',
-          isError: true);
+      _showSnack(
+        _repository.getErrorMessage(e, fallback: 'Gagal memperbarui'),
+        isError: true,
+      );
     }
   }
 
@@ -82,11 +88,11 @@ class _KecamatanAdminPageState extends State<KecamatanAdminPage> {
       builder: (ctx) => AlertDialog(
         title: const Text('Hapus Kecamatan'),
         content: Text(
-            'Hapus "$nama"? Data stok dan harga terkait juga dapat terpengaruh.'),
+            'Hapus "$nama"? Data stok dan harga terkait juga dapat terpengaruh.',),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Batal')),
+              child: const Text('Batal'),),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Hapus', style: TextStyle(color: Colors.red)),
@@ -97,11 +103,14 @@ class _KecamatanAdminPageState extends State<KecamatanAdminPage> {
     if (confirmed != true) return;
 
     try {
-      await _client.dio.delete('/kecamatan/$id');
+      await _repository.deleteKecamatan(id);
       _showSnack('Kecamatan berhasil dihapus');
       _loadData();
     } on DioException catch (e) {
-      _showSnack(e.response?.data['error'] ?? 'Gagal menghapus', isError: true);
+      _showSnack(
+        _repository.getErrorMessage(e, fallback: 'Gagal menghapus'),
+        isError: true,
+      );
     }
   }
 
@@ -110,19 +119,19 @@ class _KecamatanAdminPageState extends State<KecamatanAdminPage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg),
       backgroundColor: isError ? Colors.red[700] : const Color(0xFF2E7D32),
-    ));
+    ),);
   }
 
   void _showForm({Map<String, dynamic>? existing}) {
     final namaCtrl = TextEditingController(text: existing?['nama'] ?? '');
     final latCtrl = TextEditingController(
-        text: existing?['lat'] != null ? existing!['lat'].toString() : '');
+        text: existing?['lat'] != null ? existing!['lat'].toString() : '',);
     final lngCtrl = TextEditingController(
-        text: existing?['lng'] != null ? existing!['lng'].toString() : '');
+        text: existing?['lng'] != null ? existing!['lng'].toString() : '',);
     final luasCtrl = TextEditingController(
         text: existing?['luas_ha'] != null
             ? existing!['luas_ha'].toString()
-            : '');
+            : '',);
     final isEdit = existing != null;
     final formKey = GlobalKey<FormState>();
 
@@ -150,7 +159,7 @@ class _KecamatanAdminPageState extends State<KecamatanAdminPage> {
                 Text(
                   isEdit ? 'Edit Kecamatan' : 'Tambah Kecamatan',
                   style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.w700),
+                      fontSize: 18, fontWeight: FontWeight.w700,),
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -169,7 +178,7 @@ class _KecamatanAdminPageState extends State<KecamatanAdminPage> {
                       controller: latCtrl,
                       decoration: const InputDecoration(labelText: 'Latitude'),
                       keyboardType: const TextInputType.numberWithOptions(
-                          signed: true, decimal: true),
+                          signed: true, decimal: true,),
                       inputFormatters: [
                         FilteringTextInputFormatter.allow(RegExp(r'[0-9.\-]')),
                       ],
@@ -181,13 +190,13 @@ class _KecamatanAdminPageState extends State<KecamatanAdminPage> {
                       controller: lngCtrl,
                       decoration: const InputDecoration(labelText: 'Longitude'),
                       keyboardType: const TextInputType.numberWithOptions(
-                          signed: true, decimal: true),
+                          signed: true, decimal: true,),
                       inputFormatters: [
                         FilteringTextInputFormatter.allow(RegExp(r'[0-9.\-]')),
                       ],
                     ),
                   ),
-                ]),
+                ],),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: luasCtrl,
@@ -214,7 +223,7 @@ class _KecamatanAdminPageState extends State<KecamatanAdminPage> {
                         final luas = double.tryParse(luasCtrl.text) ?? 0.0;
                         if (isEdit) {
                           _update(existing['id'].toString(),
-                              namaCtrl.text.trim(), lat, lng, luas);
+                              namaCtrl.text.trim(), lat, lng, luas,);
                         } else {
                           _create(namaCtrl.text.trim(), lat, lng, luas);
                         }
@@ -224,7 +233,7 @@ class _KecamatanAdminPageState extends State<KecamatanAdminPage> {
                       backgroundColor: const Color(0xFF2E7D32),
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(12),),
                     ),
                     child: Text(isEdit ? 'Simpan Perubahan' : 'Tambahkan'),
                   ),
@@ -251,12 +260,12 @@ class _KecamatanAdminPageState extends State<KecamatanAdminPage> {
       ),
       body: CustomScrollView(
         slivers: [
-          SliverAppBar(
+          const SliverAppBar(
             expandedHeight: 100,
             pinned: true,
-            backgroundColor: const Color(0xFF2E7D32),
+            backgroundColor: Color(0xFF2E7D32),
             foregroundColor: Colors.white,
-            flexibleSpace: const FlexibleSpaceBar(
+            flexibleSpace: FlexibleSpaceBar(
               title:
                   Text('Manajemen Kecamatan', style: TextStyle(fontSize: 16)),
               background: DecoratedBox(
@@ -271,7 +280,7 @@ class _KecamatanAdminPageState extends State<KecamatanAdminPage> {
           if (_loading)
             const SliverFillRemaining(
               child: Center(
-                  child: CircularProgressIndicator(color: Color(0xFF2E7D32))),
+                  child: CircularProgressIndicator(color: Color(0xFF2E7D32)),),
             )
           else if (_error != null)
             SliverFillRemaining(child: _buildError())
@@ -279,7 +288,7 @@ class _KecamatanAdminPageState extends State<KecamatanAdminPage> {
             const SliverFillRemaining(
               child: Center(
                   child: Text('Belum ada kecamatan',
-                      style: TextStyle(color: Colors.grey))),
+                      style: TextStyle(color: Colors.grey),),),
             )
           else
             SliverPadding(
@@ -310,9 +319,9 @@ class _KecamatanAdminPageState extends State<KecamatanAdminPage> {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 6,
-              offset: const Offset(0, 2)),
+              offset: const Offset(0, 2),),
         ],
       ),
       child: ListTile(
@@ -325,10 +334,10 @@ class _KecamatanAdminPageState extends State<KecamatanAdminPage> {
             borderRadius: BorderRadius.circular(12),
           ),
           child: const Icon(Icons.location_on_outlined,
-              color: Color(0xFF2E7D32), size: 22),
+              color: Color(0xFF2E7D32), size: 22,),
         ),
         title: Text(nama,
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),),
         subtitle: Text(
           'Lat ${lat.toStringAsFixed(4)} · Lng ${lng.toStringAsFixed(4)}${luas > 0 ? ' · ${luas.toStringAsFixed(0)} ha' : ''}',
           style: const TextStyle(fontSize: 11, color: Colors.grey),
@@ -338,13 +347,13 @@ class _KecamatanAdminPageState extends State<KecamatanAdminPage> {
           children: [
             IconButton(
               icon: const Icon(Icons.edit_outlined,
-                  size: 20, color: Color(0xFF2E7D32)),
+                  size: 20, color: Color(0xFF2E7D32),),
               onPressed: () => _showForm(existing: item),
               tooltip: 'Edit',
             ),
             IconButton(
               icon: const Icon(Icons.delete_outline,
-                  size: 20, color: Colors.redAccent),
+                  size: 20, color: Colors.redAccent,),
               onPressed: () => _delete(id, nama),
               tooltip: 'Hapus',
             ),
@@ -362,7 +371,7 @@ class _KecamatanAdminPageState extends State<KecamatanAdminPage> {
           const Icon(Icons.error_outline, size: 48, color: Colors.grey),
           const SizedBox(height: 12),
           Text(_error ?? 'Terjadi kesalahan',
-              style: const TextStyle(color: Colors.grey)),
+              style: const TextStyle(color: Colors.grey),),
           const SizedBox(height: 16),
           ElevatedButton.icon(
             onPressed: _loadData,

@@ -1,18 +1,37 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:dio/dio.dart';
-import '../../../core/network/dio_client.dart';
+import '../data/laporan_repository.dart';
 import 'laporan_event.dart';
 import 'laporan_state.dart';
 
 class LaporanBloc extends Bloc<LaporanEvent, LaporanState> {
-  final DioClient _client;
+  final LaporanRepository _repository;
 
-  LaporanBloc(this._client) : super(LaporanInitial()) {
+  LaporanBloc(this._repository) : super(LaporanInitial()) {
     on<LoadLaporanList>(_onLoadLaporanList);
     on<CreateLaporan>(_onCreateLaporan);
-    on<RefreshLaporan>((_, __) => add(LoadLaporanList()));
+    on<RefreshLaporan>(_onRefreshLaporan);
     on<UpdateLaporanStatus>(_onUpdateLaporanStatus);
     on<DeleteLaporan>(_onDeleteLaporan);
+  }
+
+  Future<void> _onRefreshLaporan(
+    RefreshLaporan event,
+    Emitter<LaporanState> emit,
+  ) async {
+    try {
+      final list = await _repository.fetchLaporanList();
+      final laporanList = list.map((json) => LaporanItem.fromJson(json)).toList();
+      emit(LaporanLoaded(laporanList: laporanList));
+    } on DioException catch (e) {
+      final message = _repository.getErrorMessage(
+        e,
+        fallback: 'Gagal memuat ulang data laporan',
+      );
+      emit(LaporanError(message));
+    } catch (e) {
+      emit(LaporanError('Terjadi kesalahan: $e'));
+    }
   }
 
   Future<void> _onLoadLaporanList(
@@ -21,20 +40,15 @@ class LaporanBloc extends Bloc<LaporanEvent, LaporanState> {
   ) async {
     emit(LaporanLoading());
     try {
-      final response = await _client.dio.get('/laporan');
+      final list = await _repository.fetchLaporanList();
+      final laporanList = list.map((json) => LaporanItem.fromJson(json)).toList();
 
-      if (response.statusCode == 200) {
-        final data = response.data;
-        final List<dynamic> list = data['data'] ?? data ?? [];
-        final laporanList =
-            list.map((json) => LaporanItem.fromJson(json)).toList();
-
-        emit(LaporanLoaded(laporanList: laporanList));
-      } else {
-        emit(LaporanError('Gagal memuat data laporan'));
-      }
+      emit(LaporanLoaded(laporanList: laporanList));
     } on DioException catch (e) {
-      final message = e.response?.data['error'] ?? 'Gagal terhubung ke server';
+      final message = _repository.getErrorMessage(
+        e,
+        fallback: 'Gagal terhubung ke server',
+      );
       emit(LaporanError(message));
     } catch (e) {
       emit(LaporanError('Terjadi kesalahan: $e'));
@@ -47,23 +61,21 @@ class LaporanBloc extends Bloc<LaporanEvent, LaporanState> {
   ) async {
     emit(LaporanCreating());
     try {
-      final response = await _client.dio.post('/laporan', data: {
-        'jenis_masalah': event.jenisMasalah,
-        'deskripsi': event.deskripsi,
-        'kecamatan_id': event.kecamatanId,
-        'prioritas': event.prioritas,
-        if (event.fotoUrl != null) 'foto_url': event.fotoUrl,
-      },);
+      await _repository.createLaporan(
+        jenisMasalah: event.jenisMasalah,
+        deskripsi: event.deskripsi,
+        kecamatanId: event.kecamatanId,
+        prioritas: event.prioritas,
+        fotoUrl: event.fotoUrl,
+      );
 
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        emit(LaporanCreated());
-        // Reload the list
-        add(LoadLaporanList());
-      } else {
-        emit(LaporanError('Gagal membuat laporan'));
-      }
+      emit(LaporanCreated());
+      add(LoadLaporanList());
     } on DioException catch (e) {
-      final message = e.response?.data['error'] ?? 'Gagal membuat laporan';
+      final message = _repository.getErrorMessage(
+        e,
+        fallback: 'Gagal membuat laporan',
+      );
       emit(LaporanError(message));
     } catch (e) {
       emit(LaporanError('Terjadi kesalahan: $e'));
@@ -75,15 +87,19 @@ class LaporanBloc extends Bloc<LaporanEvent, LaporanState> {
     final prev = state is LaporanLoaded ? state as LaporanLoaded : null;
     emit(LaporanSubmitting());
     try {
-      await _client.dio
-          .put('/laporan/${event.id}/status', data: {'status': event.status});
+      await _repository.updateLaporanStatus(id: event.id, status: event.status);
       emit(LaporanStatusUpdated());
       add(LoadLaporanList());
     } on DioException catch (e) {
       if (prev != null) emit(prev);
-      emit(LaporanError(e.response?.data is Map
-          ? e.response!.data['error'] ?? 'Gagal memperbarui status'
-          : 'Gagal memperbarui status',),);
+      emit(
+        LaporanError(
+          _repository.getErrorMessage(
+            e,
+            fallback: 'Gagal memperbarui status',
+          ),
+        ),
+      );
     }
   }
 
@@ -91,13 +107,15 @@ class LaporanBloc extends Bloc<LaporanEvent, LaporanState> {
       DeleteLaporan event, Emitter<LaporanState> emit,) async {
     emit(LaporanSubmitting());
     try {
-      await _client.dio.delete('/laporan/${event.id}');
+      await _repository.deleteLaporan(event.id);
       emit(LaporanDeleted());
       add(LoadLaporanList());
     } on DioException catch (e) {
-      emit(LaporanError(e.response?.data is Map
-          ? e.response!.data['error'] ?? 'Gagal menghapus laporan'
-          : 'Gagal menghapus laporan',),);
+      emit(
+        LaporanError(
+          _repository.getErrorMessage(e, fallback: 'Gagal menghapus laporan'),
+        ),
+      );
     }
   }
 }

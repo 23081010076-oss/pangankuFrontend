@@ -1,13 +1,13 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:dio/dio.dart';
-import '../../../core/network/dio_client.dart';
+import '../data/harga_repository.dart';
 import 'harga_event.dart';
 import 'harga_state.dart';
 
 class HargaBloc extends Bloc<HargaEvent, HargaState> {
-  final DioClient _client;
+  final HargaRepository _repository;
 
-  HargaBloc(this._client) : super(HargaInitial()) {
+  HargaBloc(this._repository) : super(HargaInitial()) {
     on<LoadHargaList>(_onLoadHargaList);
     on<LoadHargaTrend>(_onLoadHargaTrend);
     on<CreateHarga>(_onCreateHarga);
@@ -21,22 +21,12 @@ class HargaBloc extends Bloc<HargaEvent, HargaState> {
     emit(HargaLoading());
     try {
       final results = await Future.wait([
-        _client.dio.get('/harga/latest'),
-        _client.dio.get('/komoditas'),
+        _repository.fetchLatestHarga(),
+        _repository.fetchKomoditas(),
       ]);
 
-      final hargaResp = results[0];
-      final komResp = results[1];
-
-      final List<dynamic> hargaRaw = (() {
-        final d = hargaResp.data;
-        return (d is Map ? (d['data'] ?? []) : d ?? []) as List<dynamic>;
-      })();
-
-      final List<dynamic> komRaw = (() {
-        final d = komResp.data;
-        return (d is Map ? (d['data'] ?? []) : d ?? []) as List<dynamic>;
-      })();
+      final hargaRaw = results[0];
+      final komRaw = results[1];
 
       final Map<String, String> kategoriMap = {};
       for (final k in komRaw) {
@@ -58,10 +48,14 @@ class HargaBloc extends Bloc<HargaEvent, HargaState> {
 
       emit(HargaLoaded(hargaList: hargaList, kategoris: kategoris));
     } on DioException catch (e) {
-      emit(HargaError(
-          e.response?.data is Map
-              ? e.response!.data['error'] ?? 'Gagal terhubung ke server'
-              : 'Gagal terhubung ke server',),);
+      emit(
+        HargaError(
+          _repository.getErrorMessage(
+            e,
+            fallback: 'Gagal terhubung ke server',
+          ),
+        ),
+      );
     } catch (e) {
       emit(HargaError('Terjadi kesalahan: \$e'));
     }
@@ -71,14 +65,10 @@ class HargaBloc extends Bloc<HargaEvent, HargaState> {
       LoadHargaTrend event, Emitter<HargaState> emit,) async {
     final current = state is HargaLoaded ? state as HargaLoaded : null;
     try {
-      final response = await _client.dio.get(
-        '/harga/trend/${event.komoditasId}',
-        queryParameters: {'periode': event.periode},
+      final data = await _repository.fetchHargaTrend(
+        komoditasId: event.komoditasId,
+        periode: event.periode,
       );
-
-      final raw = response.data;
-      final List<dynamic> data =
-          (raw is List ? raw : (raw is Map ? (raw['data'] ?? []) : [])) as List<dynamic>;
 
       final trendData = data.map((j) => TrendData.fromJson(j)).toList();
 
@@ -89,9 +79,11 @@ class HargaBloc extends Bloc<HargaEvent, HargaState> {
         selectedKomoditas: event.komoditasId,
       ),);
     } on DioException catch (e) {
-      emit(HargaError(e.response?.data is Map
-          ? e.response!.data['error'] ?? 'Gagal memuat trend'
-          : 'Gagal memuat trend',),);
+      emit(
+        HargaError(
+          _repository.getErrorMessage(e, fallback: 'Gagal memuat trend'),
+        ),
+      );
     }
   }
 
@@ -100,24 +92,21 @@ class HargaBloc extends Bloc<HargaEvent, HargaState> {
     final current = state is HargaLoaded ? state as HargaLoaded : null;
     emit(HargaCreating());
     try {
-      final response = await _client.dio.post('/harga', data: {
-        'komoditas_id': event.komoditasId,
-        'kecamatan_id': event.kecamatanId,
-        'harga_per_kg': event.hargaPerKg,
-        'tanggal': event.tanggal,
-      },);
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        emit(HargaCreated());
-        add(LoadHargaList());
-      } else {
-        if (current != null) emit(current);
-        emit(HargaError('Gagal menyimpan data harga'));
-      }
+      await _repository.createHarga(
+        komoditasId: event.komoditasId,
+        kecamatanId: event.kecamatanId,
+        hargaPerKg: event.hargaPerKg,
+        tanggal: event.tanggal,
+      );
+      emit(HargaCreated());
+      add(LoadHargaList());
     } on DioException catch (e) {
       if (current != null) emit(current);
-      emit(HargaError(e.response?.data is Map
-          ? e.response!.data['error'] ?? 'Gagal menyimpan harga'
-          : 'Gagal menyimpan harga',),);
+      emit(
+        HargaError(
+          _repository.getErrorMessage(e, fallback: 'Gagal menyimpan harga'),
+        ),
+      );
     }
   }
 
@@ -125,20 +114,19 @@ class HargaBloc extends Bloc<HargaEvent, HargaState> {
       UpdateHarga event, Emitter<HargaState> emit,) async {
     emit(HargaCreating());
     try {
-      final response = await _client.dio.put('/harga/${event.id}', data: {
-        'harga_per_kg': event.hargaPerKg,
-        'tanggal': event.tanggal,
-      },);
-      if (response.statusCode == 200) {
-        emit(HargaUpdated());
-        add(LoadHargaList());
-      } else {
-        emit(HargaError('Gagal memperbarui data harga'));
-      }
+      await _repository.updateHarga(
+        id: event.id,
+        hargaPerKg: event.hargaPerKg,
+        tanggal: event.tanggal,
+      );
+      emit(HargaUpdated());
+      add(LoadHargaList());
     } on DioException catch (e) {
-      emit(HargaError(e.response?.data is Map
-          ? e.response!.data['error'] ?? 'Gagal memperbarui harga'
-          : 'Gagal memperbarui harga',),);
+      emit(
+        HargaError(
+          _repository.getErrorMessage(e, fallback: 'Gagal memperbarui harga'),
+        ),
+      );
     }
   }
 
@@ -146,17 +134,15 @@ class HargaBloc extends Bloc<HargaEvent, HargaState> {
       DeleteHarga event, Emitter<HargaState> emit,) async {
     emit(HargaCreating());
     try {
-      final response = await _client.dio.delete('/harga/${event.id}');
-      if (response.statusCode == 200) {
-        emit(HargaDeleted());
-        add(LoadHargaList());
-      } else {
-        emit(HargaError('Gagal menghapus data harga'));
-      }
+      await _repository.deleteHarga(event.id);
+      emit(HargaDeleted());
+      add(LoadHargaList());
     } on DioException catch (e) {
-      emit(HargaError(e.response?.data is Map
-          ? e.response!.data['error'] ?? 'Gagal menghapus harga'
-          : 'Gagal menghapus harga',),);
+      emit(
+        HargaError(
+          _repository.getErrorMessage(e, fallback: 'Gagal menghapus harga'),
+        ),
+      );
     }
   }
 }

@@ -1,7 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import '../../../core/network/dio_client.dart';
+import '../data/admin_repository.dart';
 
 class StokAdminPage extends StatefulWidget {
   const StokAdminPage({super.key});
@@ -11,7 +12,7 @@ class StokAdminPage extends StatefulWidget {
 }
 
 class _StokAdminPageState extends State<StokAdminPage> {
-  final _client = DioClient();
+  late final AdminRepository _repository;
   final _fmt = NumberFormat('#,##0', 'id');
 
   List<Map<String, dynamic>> _stokList = [];
@@ -30,6 +31,7 @@ class _StokAdminPageState extends State<StokAdminPage> {
   @override
   void initState() {
     super.initState();
+    _repository = context.read<AdminRepository>();
     _loadData();
   }
 
@@ -46,24 +48,15 @@ class _StokAdminPageState extends State<StokAdminPage> {
     });
     try {
       final results = await Future.wait([
-        _client.dio.get('/stok', queryParameters: {'limit': 200}),
-        _client.dio.get('/komoditas'),
-        _client.dio.get('/kecamatan'),
+        _repository.fetchStok(limit: 200),
+        _repository.fetchKomoditas(),
+        _repository.fetchKecamatan(),
       ]);
-      final stokRaw = results[0].data;
-      final komRaw = results[1].data;
-      final kecRaw = results[2].data;
 
       setState(() {
-        _stokList = List<Map<String, dynamic>>.from(
-          stokRaw is Map ? (stokRaw['data'] ?? []) : stokRaw,
-        );
-        _komoditasList = List<Map<String, dynamic>>.from(
-          komRaw is Map ? (komRaw['data'] ?? komRaw) : komRaw,
-        );
-        _kecamatanList = List<Map<String, dynamic>>.from(
-          kecRaw is Map ? (kecRaw['data'] ?? kecRaw) : kecRaw,
-        );
+        _stokList = results[0];
+        _komoditasList = results[1];
+        _kecamatanList = results[2];
         _loading = false;
       });
     } catch (e) {
@@ -75,9 +68,9 @@ class _StokAdminPageState extends State<StokAdminPage> {
   }
 
   Future<void> _saveStok(Map<String, dynamic> data,
-      {String? existingId}) async {
+      {String? existingId,}) async {
     try {
-      await _client.dio.post('/stok', data: data);
+      await _repository.saveStok(data);
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -90,7 +83,10 @@ class _StokAdminPageState extends State<StokAdminPage> {
       }
     } on DioException catch (e) {
       if (mounted) {
-        final msg = e.response?.data['error'] ?? 'Gagal menyimpan data';
+        final msg = _repository.getErrorMessage(
+          e,
+          fallback: 'Gagal menyimpan data',
+        );
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(msg), backgroundColor: Colors.red[700]),
         );
@@ -143,7 +139,7 @@ class _StokAdminPageState extends State<StokAdminPage> {
                   style: const TextStyle(
                       color: Colors.white,
                       fontSize: 15,
-                      fontWeight: FontWeight.w700),
+                      fontWeight: FontWeight.w700,),
                 ),
                 background: Container(
                   decoration: const BoxDecoration(
@@ -153,7 +149,7 @@ class _StokAdminPageState extends State<StokAdminPage> {
                       colors: [
                         Color(0xFF1B5E20),
                         Color(0xFF2E7D32),
-                        Color(0xFF43A047)
+                        Color(0xFF43A047),
                       ],
                     ),
                   ),
@@ -173,7 +169,7 @@ class _StokAdminPageState extends State<StokAdminPage> {
             if (_loading)
               const SliverFillRemaining(
                 child: Center(
-                    child: CircularProgressIndicator(color: Color(0xFF2E7D32))),
+                    child: CircularProgressIndicator(color: Color(0xFF2E7D32)),),
               )
             else if (_error != null)
               SliverFillRemaining(child: _buildError())
@@ -204,14 +200,14 @@ class _StokAdminPageState extends State<StokAdminPage> {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-          color: Colors.red.withOpacity(0.2),
+          color: Colors.red.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.red.withOpacity(0.4)),
+          border: Border.all(color: Colors.red.withValues(alpha: 0.4)),
         ),
         child: Text(
           '$kritis kritis • $waspada waspada • $aman aman',
           style: const TextStyle(
-              fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600),
+              fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600,),
         ),
       );
     }
@@ -245,10 +241,10 @@ class _StokAdminPageState extends State<StokAdminPage> {
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none),
+                  borderSide: BorderSide.none,),
               enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey[200]!)),
+                  borderSide: BorderSide(color: Colors.grey[200]!),),
             ),
             onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
           ),
@@ -269,14 +265,14 @@ class _StokAdminPageState extends State<StokAdminPage> {
                       color: isSelected ? color : Colors.white,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                          color: isSelected ? color : Colors.grey[300]!),
+                          color: isSelected ? color : Colors.grey[300]!,),
                     ),
                     child: Text(
                       s[0].toUpperCase() + s.substring(1),
                       style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: isSelected ? Colors.white : Colors.grey[600]),
+                          color: isSelected ? Colors.white : Colors.grey[600],),
                     ),
                   ),
                 );
@@ -300,7 +296,7 @@ class _StokAdminPageState extends State<StokAdminPage> {
 
     final updatedAt = stok['updated_at'] != null
         ? DateFormat('dd MMM yyyy, HH:mm', 'id').format(
-            DateTime.tryParse(stok['updated_at'].toString()) ?? DateTime.now())
+            DateTime.tryParse(stok['updated_at'].toString()) ?? DateTime.now(),)
         : '-';
 
     return Container(
@@ -308,12 +304,12 @@ class _StokAdminPageState extends State<StokAdminPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: statusColor.withOpacity(0.2)),
+        border: Border.all(color: statusColor.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 8,
-              offset: const Offset(0, 2)),
+              offset: const Offset(0, 2),),
         ],
       ),
       child: Column(
@@ -326,7 +322,7 @@ class _StokAdminPageState extends State<StokAdminPage> {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
+                    color: statusColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child:
@@ -342,7 +338,7 @@ class _StokAdminPageState extends State<StokAdminPage> {
                         style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
-                            color: Color(0xFF212121)),
+                            color: Color(0xFF212121),),
                       ),
                       Text(
                         kecamatan['nama']?.toString() ?? '-',
@@ -355,7 +351,7 @@ class _StokAdminPageState extends State<StokAdminPage> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
+                    color: statusColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -363,14 +359,14 @@ class _StokAdminPageState extends State<StokAdminPage> {
                     style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        color: statusColor),
+                        color: statusColor,),
                   ),
                 ),
                 const SizedBox(width: 8),
                 IconButton(
                   onPressed: () => _showForm(context, existingStok: stok),
                   icon: const Icon(Icons.edit_outlined,
-                      size: 18, color: Color(0xFF2E7D32)),
+                      size: 18, color: Color(0xFF2E7D32),),
                   constraints:
                       const BoxConstraints(minWidth: 32, minHeight: 32),
                   padding: EdgeInsets.zero,
@@ -392,14 +388,14 @@ class _StokAdminPageState extends State<StokAdminPage> {
                           Text(
                             '${_fmt.format(stokKg)} / ${_fmt.format(kapasitasKg)} kg',
                             style: TextStyle(
-                                fontSize: 11, color: Colors.grey[600]),
+                                fontSize: 11, color: Colors.grey[600],),
                           ),
                           Text(
                             '${stokPersen.toStringAsFixed(1)}%',
                             style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
-                                color: statusColor),
+                                color: statusColor,),
                           ),
                         ],
                       ),
@@ -448,7 +444,7 @@ class _StokAdminPageState extends State<StokAdminPage> {
             const SizedBox(height: 12),
             Text(_error!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.grey)),
+                style: const TextStyle(color: Colors.grey),),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: _loadData,
@@ -456,7 +452,7 @@ class _StokAdminPageState extends State<StokAdminPage> {
               label: const Text('Coba Lagi'),
               style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2E7D32),
-                  foregroundColor: Colors.white),
+                  foregroundColor: Colors.white,),
             ),
           ],
         ),
@@ -573,7 +569,7 @@ class _StokFormSheetState extends State<_StokFormSheet> {
                 height: 4,
                 decoration: BoxDecoration(
                     color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2)),
+                    borderRadius: BorderRadius.circular(2),),
               ),
             ),
             const SizedBox(height: 16),
@@ -586,19 +582,19 @@ class _StokFormSheetState extends State<_StokFormSheet> {
               key: _formKey,
               child: Column(children: [
                 DropdownButtonFormField<String>(
-                  value: _selKomoditas,
+                  initialValue: _selKomoditas,
                   decoration: InputDecoration(
                     labelText: 'Komoditas',
                     border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(12),),
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 12),
+                        horizontal: 12, vertical: 12,),
                   ),
                   items: widget.komoditasList
                       .map((k) => DropdownMenuItem<String>(
                             value: k['id']?.toString(),
                             child: Text(k['nama']?.toString() ?? ''),
-                          ))
+                          ),)
                       .toList(),
                   onChanged:
                       isEdit ? null : (v) => setState(() => _selKomoditas = v),
@@ -606,19 +602,19 @@ class _StokFormSheetState extends State<_StokFormSheet> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: _selKecamatan,
+                  initialValue: _selKecamatan,
                   decoration: InputDecoration(
                     labelText: 'Kecamatan',
                     border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(12),),
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 12),
+                        horizontal: 12, vertical: 12,),
                   ),
                   items: widget.kecamatanList
                       .map((k) => DropdownMenuItem<String>(
                             value: k['id']?.toString(),
                             child: Text(k['nama']?.toString() ?? ''),
-                          ))
+                          ),)
                       .toList(),
                   onChanged:
                       isEdit ? null : (v) => setState(() => _selKecamatan = v),
@@ -630,7 +626,7 @@ class _StokFormSheetState extends State<_StokFormSheet> {
                     child: Row(
                       children: [
                         const Icon(Icons.info_outline,
-                            size: 13, color: Colors.grey),
+                            size: 13, color: Colors.grey,),
                         const SizedBox(width: 4),
                         Text(
                           'Komoditas & kecamatan tidak dapat diubah',
@@ -649,7 +645,7 @@ class _StokFormSheetState extends State<_StokFormSheet> {
                     labelText: 'Stok Saat Ini (kg)',
                     suffixText: 'kg',
                     border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(12),),
                   ),
                   validator: (v) {
                     if (v == null || v.isEmpty) return 'Masukkan stok';
@@ -667,7 +663,7 @@ class _StokFormSheetState extends State<_StokFormSheet> {
                     labelText: 'Kapasitas Maksimal (kg)',
                     suffixText: 'kg',
                     border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(12),),
                   ),
                   validator: (v) {
                     if (v == null || v.isEmpty) return 'Masukkan kapasitas';
@@ -688,22 +684,22 @@ class _StokFormSheetState extends State<_StokFormSheet> {
                       backgroundColor: const Color(0xFF2E7D32),
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(12),),
                     ),
                     child: _saving
                         ? const SizedBox(
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(
-                                color: Colors.white, strokeWidth: 2))
+                                color: Colors.white, strokeWidth: 2,),)
                         : Text(isEdit ? 'Perbarui Stok' : 'Simpan',
                             style:
-                                const TextStyle(fontWeight: FontWeight.w600)),
+                                const TextStyle(fontWeight: FontWeight.w600),),
                   ),
                 ),
-              ]),
+              ],),
             ),
-          ]),
+          ],),
         ),
       ),
     );
@@ -739,7 +735,7 @@ class _EmptyState extends StatelessWidget {
             Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey),
             SizedBox(height: 12),
             Text('Tidak ada data stok',
-                style: TextStyle(color: Colors.grey, fontSize: 14)),
+                style: TextStyle(color: Colors.grey, fontSize: 14),),
           ],
         ),
       ),

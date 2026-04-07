@@ -8,7 +8,11 @@ import '../bloc/distribusi_event.dart';
 import '../bloc/distribusi_state.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_state.dart';
-import '../../../core/network/dio_client.dart';
+import '../../../core/repositories/kecamatan_repository.dart';
+import '../../../core/repositories/master_data_repository.dart';
+import '../data/distribusi_repository.dart';
+
+part '../widgets/distribusi_forms.dart';
 
 class DistribusiPage extends StatefulWidget {
   const DistribusiPage({super.key});
@@ -23,7 +27,16 @@ class _DistribusiPageState extends State<DistribusiPage> {
   final Map<String, _RuteData> _ruteCache = {};
   final Set<String> _loadingRute = {};
   final Map<String, String> _ruteError = {};
+  late final DistribusiRepository _distribusiRepository;
+  late final KecamatanRepository _kecamatanRepository;
   Map<String, LatLng>? _kecamatanCoords;
+
+  @override
+  void initState() {
+    super.initState();
+    _distribusiRepository = context.read<DistribusiRepository>();
+    _kecamatanRepository = context.read<KecamatanRepository>();
+  }
 
   static const _statusList = [
     'semua',
@@ -53,8 +66,7 @@ class _DistribusiPageState extends State<DistribusiPage> {
 
     try {
       await _ensureKecamatanCoords();
-      final res = await DioClient().dio.get('/distribusi/$distribusiId/rute');
-      final data = res.data as Map<String, dynamic>;
+      final data = await _distribusiRepository.fetchDistribusiRoute(distribusiId);
       final rawSteps = (data['rute'] as List<dynamic>? ?? []);
       final steps = rawSteps
           .whereType<Map<String, dynamic>>()
@@ -98,24 +110,7 @@ class _DistribusiPageState extends State<DistribusiPage> {
     if (_kecamatanCoords != null) {
       return;
     }
-    final res = await DioClient().dio.get('/kecamatan');
-    final payload = res.data;
-    final list = payload is Map ? (payload['data'] ?? payload) : payload;
-    final map = <String, LatLng>{};
-    if (list is List) {
-      for (final row in list) {
-        if (row is! Map) {
-          continue;
-        }
-        final id = row['id']?.toString() ?? '';
-        final lat = (row['lat'] as num?)?.toDouble();
-        final lng = (row['lng'] as num?)?.toDouble();
-        if (id.isNotEmpty && lat != null && lng != null) {
-          map[id] = LatLng(lat, lng);
-        }
-      }
-    }
-    _kecamatanCoords = map;
+    _kecamatanCoords = await _kecamatanRepository.fetchKecamatanCoordinates();
   }
 
   @override
@@ -199,9 +194,11 @@ class _DistribusiPageState extends State<DistribusiPage> {
       for (final item in state.items) {
         if (item.status == 'proses') {
           proses++;
-        } else if (item.status == 'selesai')
+        } else if (item.status == 'selesai') {
           selesai++;
-        else if (item.status == 'dijadwalkan') dijadwalkan++;
+        } else if (item.status == 'dijadwalkan') {
+          dijadwalkan++;
+        }
       }
     }
     return SliverToBoxAdapter(
@@ -250,7 +247,7 @@ class _DistribusiPageState extends State<DistribusiPage> {
                     ),
                     Icon(
                       Icons.local_shipping_outlined,
-                      color: Colors.white.withOpacity(0.8),
+                      color: Colors.white.withValues(alpha: 0.8),
                       size: 28,
                     ),
                   ],
@@ -365,7 +362,7 @@ class _DistribusiPageState extends State<DistribusiPage> {
             child: Column(
               children: [
                 Icon(Icons.local_shipping_outlined,
-                    size: 56, color: Colors.grey),
+                    size: 56, color: Colors.grey,),
                 SizedBox(height: 12),
                 Text(
                   'Tidak ada data distribusi',
@@ -403,10 +400,10 @@ class _DistribusiPageState extends State<DistribusiPage> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: statusColor.withOpacity(0.3)),
+          border: Border.all(color: statusColor.withValues(alpha: 0.3)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -435,9 +432,9 @@ class _DistribusiPageState extends State<DistribusiPage> {
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
+                            horizontal: 10, vertical: 4,),
                         decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.1),
+                          color: statusColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
@@ -527,7 +524,7 @@ class _DistribusiPageState extends State<DistribusiPage> {
                       child: Row(
                         children: [
                           const Text('Update: ',
-                              style: TextStyle(fontSize: 12, color: Colors.grey)),
+                              style: TextStyle(fontSize: 12, color: Colors.grey),),
                           const SizedBox(width: 8),
                           if (item.status != 'selesai' && item.status != 'dibatalkan')
                             _statusUpdateDropdown(context, item)
@@ -891,350 +888,5 @@ class _DistribusiPageState extends State<DistribusiPage> {
         child: const _CreateDistribusiSheet(),
       ),
     );
-  }
-}
-
-class _RuteData {
-  final List<_RuteStep> steps;
-  final List<LatLng> points;
-  final double jarakKm;
-
-  const _RuteData({
-    required this.steps,
-    required this.points,
-    required this.jarakKm,
-  });
-}
-
-class _RuteStep {
-  final String id;
-  final String nama;
-
-  const _RuteStep({required this.id, required this.nama});
-}
-
-class _CreateDistribusiSheet extends StatefulWidget {
-  const _CreateDistribusiSheet();
-
-  @override
-  State<_CreateDistribusiSheet> createState() => _CreateDistribusiSheetState();
-}
-
-class _CreateDistribusiSheetState extends State<_CreateDistribusiSheet> {
-  final _formKey = GlobalKey<FormState>();
-  String? _selDari;
-  String? _selKe;
-  String? _selKomoditas;
-  final _jumlahCtrl = TextEditingController();
-  final _driverCtrl = TextEditingController();
-  final _kendaraanCtrl = TextEditingController();
-  DateTime _jadwal = DateTime.now().add(const Duration(days: 1));
-  bool _loadingOpts = true;
-  List<Map<String, dynamic>> _komList = [];
-  List<Map<String, dynamic>> _kecList = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadOptions();
-  }
-
-  @override
-  void dispose() {
-    _jumlahCtrl.dispose();
-    _driverCtrl.dispose();
-    _kendaraanCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadOptions() async {
-    try {
-      final c = DioClient();
-      final res = await Future.wait([
-        c.dio.get('/komoditas'),
-        c.dio.get('/kecamatan'),
-      ]);
-      if (mounted) {
-        setState(() {
-          _komList = List<Map<String, dynamic>>.from(
-            res[0].data is Map
-                ? (res[0].data['data'] ?? res[0].data)
-                : res[0].data,
-          );
-          _kecList = List<Map<String, dynamic>>.from(
-            res[1].data is Map
-                ? (res[1].data['data'] ?? res[1].data)
-                : res[1].data,
-          );
-          _loadingOpts = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _loadingOpts = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding:
-          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Buat Jadwal Distribusi',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 20),
-              if (_loadingOpts)
-                const Padding(
-                  padding: EdgeInsets.all(20),
-                  child: CircularProgressIndicator(color: Color(0xFF1565C0)),
-                )
-              else
-                Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      DropdownButtonFormField<String>(
-                        initialValue: _selKomoditas,
-                        decoration: InputDecoration(
-                          labelText: 'Komoditas',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 12,
-                          ),
-                        ),
-                        items: _komList
-                            .map(
-                              (k) => DropdownMenuItem(
-                                value: k['id']?.toString(),
-                                child: Text(k['nama']?.toString() ?? ''),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (v) => setState(() => _selKomoditas = v),
-                        validator: (v) => v == null ? 'Pilih komoditas' : null,
-                      ),
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
-                        initialValue: _selDari,
-                        decoration: InputDecoration(
-                          labelText: 'Dari Kecamatan',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 12,
-                          ),
-                        ),
-                        items: _kecList
-                            .map(
-                              (k) => DropdownMenuItem(
-                                value: k['id']?.toString(),
-                                child: Text(k['nama']?.toString() ?? ''),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (v) => setState(() => _selDari = v),
-                        validator: (v) =>
-                            v == null ? 'Pilih kecamatan asal' : null,
-                      ),
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
-                        initialValue: _selKe,
-                        decoration: InputDecoration(
-                          labelText: 'Ke Kecamatan',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 12,
-                          ),
-                        ),
-                        items: _kecList
-                            .map(
-                              (k) => DropdownMenuItem(
-                                value: k['id']?.toString(),
-                                child: Text(k['nama']?.toString() ?? ''),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (v) => setState(() => _selKe = v),
-                        validator: (v) =>
-                            v == null ? 'Pilih kecamatan tujuan' : null,
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _jumlahCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        decoration: InputDecoration(
-                          labelText: 'Jumlah (kg)',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        validator: (v) {
-                          if (v == null || v.isEmpty) {
-                            return 'Masukkan jumlah';
-                          }
-                          if (double.tryParse(v) == null ||
-                              double.parse(v) <= 0) {
-                            return 'Nilai tidak valid';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      GestureDetector(
-                        onTap: () async {
-                          final picked =
-                              await showDateTimePicker(context: context);
-                          if (picked != null) {
-                            setState(() => _jadwal = picked);
-                          }
-                        },
-                        child: InputDecorator(
-                          decoration: InputDecoration(
-                            labelText: 'Jadwal Berangkat',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            suffixIcon: const Icon(
-                              Icons.calendar_today_outlined,
-                              size: 18,
-                            ),
-                          ),
-                          child: Text(
-                            DateFormat('dd MMM yyyy HH:mm', 'id')
-                                .format(_jadwal),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _driverCtrl,
-                        decoration: InputDecoration(
-                          labelText: 'Nama Driver (opsional)',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _kendaraanCtrl,
-                        decoration: InputDecoration(
-                          labelText: 'Nama Kendaraan (opsional)',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      BlocBuilder<DistribusiBloc, DistribusiState>(
-                        builder: (ctx, bstate) => SizedBox(
-                          width: double.infinity,
-                          height: 48,
-                          child: ElevatedButton(
-                            onPressed: bstate is DistribusiSaving
-                                ? null
-                                : () => _submit(ctx),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF1565C0),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: bstate is DistribusiSaving
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Text(
-                                    'Buat Jadwal',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<DateTime?> showDateTimePicker({required BuildContext context}) async {
-    final date = await showDatePicker(
-      context: context,
-      initialDate: _jadwal,
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 60)),
-    );
-    if (date == null) return null;
-    if (!mounted) return null;
-    final time = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(_jadwal),
-    );
-    if (time == null) return date;
-    return DateTime(date.year, date.month, date.day, time.hour, time.minute);
-  }
-
-  void _submit(BuildContext ctx) {
-    if (!_formKey.currentState!.validate()) return;
-    ctx.read<DistribusiBloc>().add(
-          CreateDistribusi(
-            dariKecamatanId: _selDari!,
-            keKecamatanId: _selKe!,
-            komoditasId: _selKomoditas!,
-            jumlahKg: double.parse(_jumlahCtrl.text),
-            jadwalBerangkat: _jadwal.toUtc().toIso8601String(),
-            namaDriver: _driverCtrl.text.trim().isEmpty
-                ? null
-                : _driverCtrl.text.trim(),
-            namaKendaraan: _kendaraanCtrl.text.trim().isEmpty
-                ? null
-                : _kendaraanCtrl.text.trim(),
-          ),
-        );
-    Navigator.of(ctx).pop();
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
-import '../../../core/network/dio_client.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../data/admin_repository.dart';
 
 class UsersAdminPage extends StatefulWidget {
   const UsersAdminPage({super.key});
@@ -10,7 +11,7 @@ class UsersAdminPage extends StatefulWidget {
 }
 
 class _UsersAdminPageState extends State<UsersAdminPage> {
-  final _client = DioClient();
+  late final AdminRepository _repository;
   final _searchCtrl = TextEditingController();
 
   List<Map<String, dynamic>> _users = [];
@@ -26,6 +27,7 @@ class _UsersAdminPageState extends State<UsersAdminPage> {
   @override
   void initState() {
     super.initState();
+    _repository = context.read<AdminRepository>();
     _loadData();
   }
 
@@ -43,25 +45,20 @@ class _UsersAdminPageState extends State<UsersAdminPage> {
     });
 
     try {
-      final queryParams = <String, dynamic>{
-        'page': _page,
-        'limit': _limit,
-      };
-      if (_selectedRole != 'Semua') queryParams['role'] = _selectedRole;
-      if (_searchCtrl.text.trim().isNotEmpty) {
-        queryParams['search'] = _searchCtrl.text.trim();
-      }
-
-      final res = await _client.dio.get('/users', queryParameters: queryParams);
-      final raw = res.data['data'] as List<dynamic>;
+      final result = await _repository.fetchUsers(
+        page: _page,
+        limit: _limit,
+        role: _selectedRole != 'Semua' ? _selectedRole : null,
+        search: _searchCtrl.text.trim(),
+      );
       setState(() {
-        _users = List<Map<String, dynamic>>.from(raw);
-        _total = (res.data['total'] ?? 0) as int;
+        _users = List<Map<String, dynamic>>.from(result['items'] as List);
+        _total = result['total'] as int;
         _loading = false;
       });
     } on DioException catch (e) {
       setState(() {
-        _error = e.response?.data['error'] ?? 'Gagal memuat data';
+        _error = _repository.getErrorMessage(e, fallback: 'Gagal memuat data');
         _loading = false;
       });
     }
@@ -76,22 +73,27 @@ class _UsersAdminPageState extends State<UsersAdminPage> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setInner) => AlertDialog(
           title: const Text('Ubah Peran Pengguna'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: roles
-                .map((r) => RadioListTile<String>(
-                      value: r,
-                      groupValue: selected,
-                      title: Text(_roleLabel(r)),
-                      activeColor: const Color(0xFF2E7D32),
-                      onChanged: (v) => setInner(() => selected = v),
-                    ))
+          content: DropdownButtonFormField<String>(
+            initialValue: selected,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: 'Peran',
+              border: OutlineInputBorder(),
+            ),
+            items: roles
+                .map(
+                  (r) => DropdownMenuItem<String>(
+                    value: r,
+                    child: Text(_roleLabel(r)),
+                  ),
+                )
                 .toList(),
+            onChanged: (v) => setInner(() => selected = v),
           ),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('Batal')),
+                child: const Text('Batal'),),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, selected),
               style: ElevatedButton.styleFrom(
@@ -108,12 +110,14 @@ class _UsersAdminPageState extends State<UsersAdminPage> {
     if (newRole == null || newRole == currentRole) return;
 
     try {
-      await _client.dio.put('/users/$id/role', data: {'role': newRole});
+      await _repository.updateUserRole(id: id, role: newRole);
       _showSnack('Peran pengguna berhasil diubah');
       _loadData();
     } on DioException catch (e) {
-      _showSnack(e.response?.data['error'] ?? 'Gagal mengubah peran',
-          isError: true);
+      _showSnack(
+        _repository.getErrorMessage(e, fallback: 'Gagal mengubah peran'),
+        isError: true,
+      );
     }
   }
 
@@ -122,7 +126,7 @@ class _UsersAdminPageState extends State<UsersAdminPage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg),
       backgroundColor: isError ? Colors.red[700] : const Color(0xFF2E7D32),
-    ));
+    ),);
   }
 
   @override
@@ -131,12 +135,12 @@ class _UsersAdminPageState extends State<UsersAdminPage> {
       backgroundColor: const Color(0xFFF5F7FA),
       body: CustomScrollView(
         slivers: [
-          SliverAppBar(
+          const SliverAppBar(
             expandedHeight: 100,
             pinned: true,
-            backgroundColor: const Color(0xFF2E7D32),
+            backgroundColor: Color(0xFF2E7D32),
             foregroundColor: Colors.white,
-            flexibleSpace: const FlexibleSpaceBar(
+            flexibleSpace: FlexibleSpaceBar(
               title: Text('Manajemen Pengguna', style: TextStyle(fontSize: 16)),
               background: DecoratedBox(
                 decoration: BoxDecoration(
@@ -173,7 +177,7 @@ class _UsersAdminPageState extends State<UsersAdminPage> {
                         borderSide: BorderSide.none,
                       ),
                       contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
+                          horizontal: 16, vertical: 12,),
                     ),
                     onSubmitted: (_) => _loadData(),
                   ),
@@ -214,7 +218,7 @@ class _UsersAdminPageState extends State<UsersAdminPage> {
           if (_loading)
             const SliverFillRemaining(
               child: Center(
-                  child: CircularProgressIndicator(color: Color(0xFF2E7D32))),
+                  child: CircularProgressIndicator(color: Color(0xFF2E7D32)),),
             )
           else if (_error != null)
             SliverFillRemaining(child: _buildError())
@@ -222,7 +226,7 @@ class _UsersAdminPageState extends State<UsersAdminPage> {
             const SliverFillRemaining(
               child: Center(
                 child: Text('Tidak ada pengguna ditemukan',
-                    style: TextStyle(color: Colors.grey)),
+                    style: TextStyle(color: Colors.grey),),
               ),
             )
           else ...[
@@ -269,7 +273,7 @@ class _UsersAdminPageState extends State<UsersAdminPage> {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -317,12 +321,12 @@ class _UsersAdminPageState extends State<UsersAdminPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(email,
-                style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                style: const TextStyle(fontSize: 11, color: Colors.grey),),
             const SizedBox(height: 4),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: roleColor.withOpacity(0.12),
+                color: roleColor.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
@@ -338,7 +342,7 @@ class _UsersAdminPageState extends State<UsersAdminPage> {
         ),
         trailing: IconButton(
           icon: const Icon(Icons.manage_accounts_outlined,
-              color: Color(0xFF2E7D32)),
+              color: Color(0xFF2E7D32),),
           tooltip: 'Ubah Peran',
           onPressed: () => _updateRole(id, role),
         ),
@@ -354,7 +358,7 @@ class _UsersAdminPageState extends State<UsersAdminPage> {
           const Icon(Icons.error_outline, size: 48, color: Colors.grey),
           const SizedBox(height: 12),
           Text(_error ?? 'Terjadi kesalahan',
-              style: const TextStyle(color: Colors.grey)),
+              style: const TextStyle(color: Colors.grey),),
           const SizedBox(height: 16),
           ElevatedButton.icon(
             onPressed: _loadData,

@@ -7,7 +7,7 @@ import '../../auth/bloc/auth_state.dart';
 import '../../profile/bloc/profile_bloc.dart';
 import '../../profile/bloc/profile_event.dart';
 import '../../profile/bloc/profile_state.dart';
-import '../../../core/network/dio_client.dart';
+import '../../../core/repositories/kecamatan_repository.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -106,7 +106,7 @@ class _ProfilePageState extends State<ProfilePage> {
           colors: [Color(0xFF1B5E20), Color(0xFF2E7D32), Color(0xFF43A047)],
         ),
         borderRadius: BorderRadius.only(
-            bottomLeft: Radius.circular(32), bottomRight: Radius.circular(32)),
+            bottomLeft: Radius.circular(32), bottomRight: Radius.circular(32),),
       ),
       child: SafeArea(
         child: Padding(
@@ -115,7 +115,7 @@ class _ProfilePageState extends State<ProfilePage> {
             children: [
               CircleAvatar(
                 radius: 40,
-                backgroundColor: Colors.white.withOpacity(0.25),
+                backgroundColor: Colors.white.withValues(alpha: 0.25),
                 child: Text(
                   initials,
                   style: const TextStyle(
@@ -148,7 +148,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
@@ -169,7 +169,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildBody(BuildContext ctx, dynamic profile, String role) {
     final isAdmin = role == 'admin';
-    final isAdminOrPetugas = role == 'admin' || role == 'petugas';
 
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -279,7 +278,7 @@ class _ProfilePageState extends State<ProfilePage> {
             fontSize: 12,
             fontWeight: FontWeight.w700,
             color: Color(0xFF757575),
-            letterSpacing: 0.5),
+            letterSpacing: 0.5,),
       ),
     );
   }
@@ -291,7 +290,7 @@ class _ProfilePageState extends State<ProfilePage> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -351,7 +350,7 @@ class _ProfilePageState extends State<ProfilePage> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -502,6 +501,7 @@ class _EditProfilSheet extends StatefulWidget {
 class _EditProfilSheetState extends State<_EditProfilSheet> {
   late final TextEditingController _nameCtrl;
   late final TextEditingController _phoneCtrl;
+  late final KecamatanRepository _kecamatanRepository;
   final _formKey = GlobalKey<FormState>();
   List<Map<String, dynamic>> _kecList = [];
   String? _selKecamatan;
@@ -509,6 +509,7 @@ class _EditProfilSheetState extends State<_EditProfilSheet> {
   @override
   void initState() {
     super.initState();
+    _kecamatanRepository = context.read<KecamatanRepository>();
     _nameCtrl = TextEditingController(text: widget.profile.name);
     _phoneCtrl = TextEditingController(text: widget.profile.phone ?? '');
     _selKecamatan = widget.profile.kecamatanId;
@@ -517,12 +518,10 @@ class _EditProfilSheetState extends State<_EditProfilSheet> {
 
   Future<void> _loadKecamatan() async {
     try {
-      final res = await DioClient().dio.get('/kecamatan');
+      final list = await _kecamatanRepository.fetchKecamatanList();
       if (mounted) {
         setState(() {
-          _kecList = List<Map<String, dynamic>>.from(
-            res.data is Map ? (res.data['data'] ?? res.data) : res.data,
-          );
+          _kecList = list;
         });
       }
     } catch (_) {}

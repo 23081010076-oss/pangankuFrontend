@@ -6,7 +6,7 @@ import '../bloc/stok_event.dart';
 import '../bloc/stok_state.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_state.dart';
-import '../../../core/network/dio_client.dart';
+import '../../../core/repositories/master_data_repository.dart';
 
 class StokPanganPage extends StatefulWidget {
   const StokPanganPage({super.key});
@@ -68,7 +68,7 @@ class _StokPanganPageState extends State<StokPanganPage> {
                   const SliverFillRemaining(
                     child: Center(
                         child: CircularProgressIndicator(
-                            color: Color(0xFF2E7D32))),
+                            color: Color(0xFF2E7D32),),),
                   )
                 else if (state is StokError)
                   SliverFillRemaining(child: _buildError((state).message))
@@ -92,10 +92,11 @@ class _StokPanganPageState extends State<StokPanganPage> {
         final worst = _worstStatus(items);
         if (worst == 'aman') {
           aman++;
-        } else if (worst == 'waspada')
+        } else if (worst == 'waspada') {
           waspada++;
-        else
+        } else {
           kritis++;
+        }
       }
     }
 
@@ -129,28 +130,28 @@ class _StokPanganPageState extends State<StokPanganPage> {
                               style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 18,
-                                  fontWeight: FontWeight.w800)),
+                                  fontWeight: FontWeight.w800,),),
                           Text('Kondisi per kecamatan',
                               style: TextStyle(
-                                  color: Colors.white70, fontSize: 12)),
+                                  color: Colors.white70, fontSize: 12,),),
                         ],
                       ),
                     ),
                     Icon(Icons.inventory_2_outlined,
-                        color: Colors.white.withOpacity(0.8), size: 28),
+                        color: Colors.white.withValues(alpha: 0.8), size: 28,),
                   ],
                 ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
                     _statBadge('$aman', 'Aman', const Color(0xFFE8F5E9),
-                        const Color(0xFF2E7D32)),
+                        const Color(0xFF2E7D32),),
                     const SizedBox(width: 8),
                     _statBadge('$waspada', 'Waspada', const Color(0xFFFFF3E0),
-                        const Color(0xFFF57C00)),
+                        const Color(0xFFF57C00),),
                     const SizedBox(width: 8),
                     _statBadge('$kritis', 'Kritis', const Color(0xFFFFEBEE),
-                        const Color(0xFFC62828)),
+                        const Color(0xFFC62828),),
                   ],
                 ),
               ],
@@ -171,7 +172,7 @@ class _StokPanganPageState extends State<StokPanganPage> {
           children: [
             Text(value,
                 style: TextStyle(
-                    fontSize: 20, fontWeight: FontWeight.w800, color: fg)),
+                    fontSize: 20, fontWeight: FontWeight.w800, color: fg,),),
             Text(label, style: TextStyle(fontSize: 10, color: fg)),
           ],
         ),
@@ -202,9 +203,9 @@ class _StokPanganPageState extends State<StokPanganPage> {
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
-                              color: color.withOpacity(0.3),
+                              color: color.withValues(alpha: 0.3),
                               blurRadius: 8,
-                              offset: const Offset(0, 2))
+                              offset: const Offset(0, 2),),
                         ]
                       : null,
                 ),
@@ -213,7 +214,7 @@ class _StokPanganPageState extends State<StokPanganPage> {
                   style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
-                      color: isSelected ? Colors.white : Colors.grey[600]),
+                      color: isSelected ? Colors.white : Colors.grey[600],),
                 ),
               ),
             );
@@ -240,7 +241,7 @@ class _StokPanganPageState extends State<StokPanganPage> {
                 Icon(Icons.inventory_2_outlined, size: 56, color: Colors.grey),
                 SizedBox(height: 12),
                 Text('Tidak ada data stok',
-                    style: TextStyle(color: Colors.grey)),
+                    style: TextStyle(color: Colors.grey),),
               ],
             ),
           ),
@@ -273,12 +274,12 @@ class _StokPanganPageState extends State<StokPanganPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: statusColor.withOpacity(0.3)),
+        border: Border.all(color: statusColor.withValues(alpha: 0.3)),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 8,
-              offset: const Offset(0, 2))
+              offset: const Offset(0, 2),),
         ],
       ),
       child: Column(
@@ -293,14 +294,14 @@ class _StokPanganPageState extends State<StokPanganPage> {
                       style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF212121))),
+                          color: Color(0xFF212121),),),
                 ),
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20)),
+                      color: statusColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -311,7 +312,7 @@ class _StokPanganPageState extends State<StokPanganPage> {
                         style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: statusColor),
+                            color: statusColor,),
                       ),
                     ],
                   ),
@@ -349,13 +350,13 @@ class _StokPanganPageState extends State<StokPanganPage> {
                       style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF424242)))),
+                          color: Color(0xFF424242),),),),
               Text('${fmt.format(item.stokKg)} ${item.komoditasSatuan}',
-                  style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),),
               const SizedBox(width: 8),
               Text('${item.stokPersen.toStringAsFixed(0)}%',
                   style: TextStyle(
-                      fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+                      fontSize: 11, fontWeight: FontWeight.w700, color: color,),),
             ],
           ),
           const SizedBox(height: 5),
@@ -422,7 +423,7 @@ class _StokPanganPageState extends State<StokPanganPage> {
             const SizedBox(height: 12),
             Text(message,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.grey)),
+                style: const TextStyle(color: Colors.grey),),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: () => context.read<StokBloc>().add(LoadStokList()),
@@ -430,7 +431,7 @@ class _StokPanganPageState extends State<StokPanganPage> {
               label: const Text('Coba Lagi'),
               style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2E7D32),
-                  foregroundColor: Colors.white),
+                  foregroundColor: Colors.white,),
             ),
           ],
         ),
@@ -558,23 +559,15 @@ class _UpsertStokSheetState extends State<_UpsertStokSheet> {
 
   Future<void> _loadOptions() async {
     try {
-      final c = DioClient();
+      final repository = context.read<MasterDataRepository>();
       final res = await Future.wait([
-        c.dio.get('/komoditas'),
-        c.dio.get('/kecamatan'),
+        repository.fetchKomoditas(),
+        repository.fetchKecamatan(),
       ]);
       if (mounted) {
         setState(() {
-          _komList = List<Map<String, dynamic>>.from(
-            res[0].data is Map
-                ? (res[0].data['data'] ?? res[0].data)
-                : res[0].data,
-          );
-          _kecList = List<Map<String, dynamic>>.from(
-            res[1].data is Map
-                ? (res[1].data['data'] ?? res[1].data)
-                : res[1].data,
-          );
+          _komList = res[0];
+          _kecList = res[1];
           _loadingOpts = false;
         });
       }
@@ -610,7 +603,7 @@ class _UpsertStokSheetState extends State<_UpsertStokSheet> {
             const SizedBox(height: 16),
             Text(
               widget.initialItem == null ? 'Update Data Stok' : 'Edit Data Stok',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 20),
             if (_loadingOpts)

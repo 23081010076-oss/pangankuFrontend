@@ -1,13 +1,13 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:dio/dio.dart';
-import '../../../core/network/dio_client.dart';
+import '../data/notifikasi_repository.dart';
 import 'notifikasi_event.dart';
 import 'notifikasi_state.dart';
 
 class NotifikasiBloc extends Bloc<NotifikasiEvent, NotifikasiState> {
-  final DioClient _client;
+  final NotifikasiRepository _repository;
 
-  NotifikasiBloc(this._client) : super(NotifikasiInitial()) {
+  NotifikasiBloc(this._repository) : super(NotifikasiInitial()) {
     on<LoadNotifikasiList>(_onLoad);
     on<MarkAsRead>(_onMarkAsRead);
     on<MarkAllRead>(_onMarkAllRead);
@@ -18,16 +18,17 @@ class NotifikasiBloc extends Bloc<NotifikasiEvent, NotifikasiState> {
       LoadNotifikasiList event, Emitter<NotifikasiState> emit,) async {
     emit(NotifikasiLoading());
     try {
-      final response = await _client.dio.get('/notifikasi');
-      final data = response.data;
-      final List<dynamic> list = data['data'] ?? (data is List ? data : []);
+      final list = await _repository.fetchNotifikasiList();
       final items = list
-          .map((j) => NotifikasiItem.fromJson(j as Map<String, dynamic>))
+          .map((j) => NotifikasiItem.fromJson(j))
           .toList();
       emit(NotifikasiLoaded(items));
     } on DioException catch (e) {
-      emit(NotifikasiError(
-          e.response?.data?['error'] as String? ?? 'Gagal memuat notifikasi',),);
+      emit(
+        NotifikasiError(
+          _repository.getErrorMessage(e, fallback: 'Gagal memuat notifikasi'),
+        ),
+      );
     } catch (e) {
       emit(NotifikasiError('Terjadi kesalahan: $e'));
     }
@@ -36,7 +37,7 @@ class NotifikasiBloc extends Bloc<NotifikasiEvent, NotifikasiState> {
   Future<void> _onMarkAsRead(
       MarkAsRead event, Emitter<NotifikasiState> emit,) async {
     try {
-      await _client.dio.put('/notifikasi/${event.id}/read');
+      await _repository.markAsRead(event.id);
       if (state is NotifikasiLoaded) {
         final current = (state as NotifikasiLoaded).items;
         final updated = current
@@ -50,7 +51,7 @@ class NotifikasiBloc extends Bloc<NotifikasiEvent, NotifikasiState> {
   Future<void> _onMarkAllRead(
       MarkAllRead event, Emitter<NotifikasiState> emit,) async {
     try {
-      await _client.dio.put('/notifikasi/read-all');
+      await _repository.markAllRead();
       if (state is NotifikasiLoaded) {
         final updated = (state as NotifikasiLoaded)
             .items
