@@ -316,6 +316,11 @@ class _ForecastPageState extends State<ForecastPage> {
             ? 'Tren Turun'
             : 'Stabil';
 
+    double? pctChange;
+    if (_predictions.length >= 2 && _predictions.first > 0) {
+      pctChange = ((_predictions.last - _predictions.first) / _predictions.first) * 100;
+    }
+
     return Row(
       children: [
         Expanded(
@@ -330,21 +335,39 @@ class _ForecastPageState extends State<ForecastPage> {
               children: [
                 Icon(icon, color: color, size: 24),
                 const SizedBox(width: 10),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Prediksi 7 Hari',
-                        style:
-                            TextStyle(fontSize: 11, color: Colors.grey[600])),
-                    Text(
-                      ' — ',
-                      style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: color),
-                    ),
-                  ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Prediksi 7 Hari',
+                          style:
+                              TextStyle(fontSize: 11, color: Colors.grey[600])),
+                      Text(
+                        label,
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: color),
+                      ),
+                    ],
+                  ),
                 ),
+                if (pctChange != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${pctChange > 0 ? '+' : ''}${pctChange.toStringAsFixed(1)}%',
+                      style: TextStyle(
+                        color: color,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),

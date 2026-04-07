@@ -8,6 +8,9 @@ class DashboardStats {
   final int kecamatanAman;
   final int kecamatanWaspada;
   final int kecamatanKritis;
+  final List<String> listKecamatanAman;
+  final List<String> listKecamatanWaspada;
+  final List<String> listKecamatanKritis;
   final double avgHargaBeras;
   final double avgHargaJagung;
   final double avgHargaKedelai;
@@ -33,6 +36,9 @@ class DashboardStats {
     required this.kecamatanAman,
     required this.kecamatanWaspada,
     required this.kecamatanKritis,
+    this.listKecamatanAman = const [],
+    this.listKecamatanWaspada = const [],
+    this.listKecamatanKritis = const [],
     required this.avgHargaBeras,
     required this.avgHargaJagung,
     required this.avgHargaKedelai,
@@ -84,6 +90,9 @@ class DashboardStats {
       kecamatanAman: (json['kecamatan_aman'] as num?)?.toInt() ?? 0,
       kecamatanWaspada: (json['kecamatan_waspada'] as num?)?.toInt() ?? 0,
       kecamatanKritis: (json['kecamatan_kritis'] as num?)?.toInt() ?? 0,
+      listKecamatanAman: _parseStringList(json['list_kecamatan_aman']),
+      listKecamatanWaspada: _parseStringList(json['list_kecamatan_waspada']),
+      listKecamatanKritis: _parseStringList(json['list_kecamatan_kritis']),
       avgHargaBeras: (json['avg_harga_beras'] ?? 0).toDouble(),
       avgHargaJagung: (json['avg_harga_jagung'] ?? 0).toDouble(),
       avgHargaKedelai: (json['avg_harga_kedelai'] ?? 0).toDouble(),

@@ -417,19 +417,27 @@ class _HomePage extends StatelessWidget {
   Widget _buildStatusCards(BuildContext context) {
     return BlocBuilder<AnalyticsBloc, AnalyticsState>(
       builder: (ctx, state) {
-        final aman = state is AnalyticsLoaded
-            ? state.stats.kecamatanAman.toString()
-            : '-';
-        final waspada = state is AnalyticsLoaded
-            ? state.stats.kecamatanWaspada.toString()
-            : '-';
-        final kritis = state is AnalyticsLoaded
-            ? state.stats.kecamatanKritis.toString()
-            : '-';
+        String aman = '-';
+        String waspada = '-';
+        String kritis = '-';
+        List<String> listAman = [];
+        List<String> listWaspada = [];
+        List<String> listKritis = [];
+
+        if (state is AnalyticsLoaded) {
+          aman = state.stats.kecamatanAman.toString();
+          waspada = state.stats.kecamatanWaspada.toString();
+          kritis = state.stats.kecamatanKritis.toString();
+          listAman = state.stats.listKecamatanAman;
+          listWaspada = state.stats.listKecamatanWaspada;
+          listKritis = state.stats.listKecamatanKritis;
+        }
+
         final cards = [
           {
             'label': 'Aman',
             'value': aman,
+            'list': listAman,
             'color': const Color(0xFF2E7D32),
             'bg': const Color(0xFFE8F5E9),
             'icon': Icons.check_circle_outline,
@@ -437,6 +445,7 @@ class _HomePage extends StatelessWidget {
           {
             'label': 'Waspada',
             'value': waspada,
+            'list': listWaspada,
             'color': const Color(0xFFF57C00),
             'bg': const Color(0xFFFFF3E0),
             'icon': Icons.warning_amber_outlined,
@@ -444,13 +453,16 @@ class _HomePage extends StatelessWidget {
           {
             'label': 'Kritis',
             'value': kritis,
+            'list': listKritis,
             'color': const Color(0xFFC62828),
             'bg': const Color(0xFFFFEBEE),
             'icon': Icons.error_outline,
           },
         ];
         return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: cards.map((c) {
+            final kecList = c['list'] as List<String>;
             return Expanded(
               child: Container(
                 margin: EdgeInsets.only(right: cards.indexOf(c) < 2 ? 10 : 0),
@@ -469,6 +481,7 @@ class _HomePage extends StatelessWidget {
                   ],
                 ),
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
                       c['icon'] as IconData,
@@ -486,8 +499,15 @@ class _HomePage extends StatelessWidget {
                     ),
                     Text(
                       c['label'] as String,
-                      style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                      style: TextStyle(fontSize: 10, color: Colors.grey[600], fontWeight: FontWeight.bold),
                     ),
+                    if (kecList.isNotEmpty) const SizedBox(height: 8),
+                    if (kecList.isNotEmpty)
+                      Text(
+                        kecList.join(', '),
+                        style: TextStyle(fontSize: 9, color: Colors.grey[800]),
+                        textAlign: TextAlign.center,
+                      ),
                   ],
                 ),
               ),
@@ -818,6 +838,16 @@ class _ChartCardWidgetState extends State<_ChartCardWidget> {
     final yInterval =
       ((chartMaxY - chartMinY) / 4).clamp(1, double.infinity).toDouble();
 
+    // Hitung persentase kenaikan/penurunan (Data terbaru vs Data terlama di chart)
+    double? percentChange;
+    if (spots.length >= 2) {
+      final firstVal = spots.first.y;
+      final lastVal = spots.last.y;
+      if (firstVal > 0) {
+        percentChange = ((lastVal - firstVal) / firstVal) * 100;
+      }
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -838,14 +868,48 @@ class _ChartCardWidgetState extends State<_ChartCardWidget> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Harga Komoditas',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF212121),
-                ),
-              ),
+               Expanded(
+                 child: Row(
+                   children: [
+                     const Text(
+                       'Harga Komoditas',
+                       style: TextStyle(
+                         fontSize: 13,
+                         fontWeight: FontWeight.w700,
+                         color: Color(0xFF212121),
+                       ),
+                     ),
+                     if (percentChange != null) ...[
+                       const SizedBox(width: 8),
+                       Container(
+                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                         decoration: BoxDecoration(
+                           color: percentChange > 0 ? Colors.red[50] : (percentChange < 0 ? Colors.green[50] : Colors.grey[100]),
+                           borderRadius: BorderRadius.circular(4),
+                         ),
+                         child: Row(
+                           children: [
+                             Icon(
+                               percentChange > 0 ? Icons.trending_up : (percentChange < 0 ? Icons.trending_down : Icons.trending_flat),
+                               size: 10,
+                               color: percentChange > 0 ? Colors.red[700] : (percentChange < 0 ? Colors.green[700] : Colors.grey[700]),
+                             ),
+                             const SizedBox(width: 2),
+                             Text(
+                               '${percentChange.abs().toStringAsFixed(1)}%',
+                               style: TextStyle(
+                                 fontSize: 10,
+                                 fontWeight: FontWeight.w700,
+                                 color: percentChange > 0 ? Colors.red[700] : (percentChange < 0 ? Colors.green[700] : Colors.grey[700]),
+                               ),
+                             ),
+                           ],
+                         ),
+                       ),
+                     ],
+                   ]
+                 ),
+               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 decoration: BoxDecoration(
