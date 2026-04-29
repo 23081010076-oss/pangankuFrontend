@@ -1,3 +1,8 @@
+// Penjelasan file:
+// Feature: admin
+// Layer: ui
+// File: stok_admin_page
+// Fungsi utama: File ini mengatur tampilan halaman, komponen visual, dan interaksi pengguna.
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -67,8 +72,10 @@ class _StokAdminPageState extends State<StokAdminPage> {
     }
   }
 
-  Future<void> _saveStok(Map<String, dynamic> data,
-      {String? existingId,}) async {
+  Future<void> _saveStok(
+    Map<String, dynamic> data, {
+    String? existingId,
+  }) async {
     try {
       await _repository.saveStok(data);
       if (mounted) {
@@ -137,9 +144,10 @@ class _StokAdminPageState extends State<StokAdminPage> {
                 title: Text(
                   'Manajemen Stok${_loading ? '' : ' (${_stokList.length})'}',
                   style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,),
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 background: Container(
                   decoration: const BoxDecoration(
@@ -169,7 +177,8 @@ class _StokAdminPageState extends State<StokAdminPage> {
             if (_loading)
               const SliverFillRemaining(
                 child: Center(
-                    child: CircularProgressIndicator(color: Color(0xFF2E7D32)),),
+                  child: CircularProgressIndicator(color: Color(0xFF2E7D32)),
+                ),
               )
             else if (_error != null)
               SliverFillRemaining(child: _buildError())
@@ -205,9 +214,12 @@ class _StokAdminPageState extends State<StokAdminPage> {
           border: Border.all(color: Colors.red.withValues(alpha: 0.4)),
         ),
         child: Text(
-          '$kritis kritis • $waspada waspada • $aman aman',
+          '$kritis kritis â€¢ $waspada waspada â€¢ $aman aman',
           style: const TextStyle(
-              fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600,),
+            fontSize: 10,
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       );
     }
@@ -240,11 +252,13 @@ class _StokAdminPageState extends State<StokAdminPage> {
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,),
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
               enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey[200]!),),
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey[200]!),
+              ),
             ),
             onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
           ),
@@ -265,14 +279,16 @@ class _StokAdminPageState extends State<StokAdminPage> {
                       color: isSelected ? color : Colors.white,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                          color: isSelected ? color : Colors.grey[300]!,),
+                        color: isSelected ? color : Colors.grey[300]!,
+                      ),
                     ),
                     child: Text(
                       s[0].toUpperCase() + s.substring(1),
                       style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: isSelected ? Colors.white : Colors.grey[600],),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: isSelected ? Colors.white : Colors.grey[600],
+                      ),
                     ),
                   ),
                 );
@@ -296,7 +312,8 @@ class _StokAdminPageState extends State<StokAdminPage> {
 
     final updatedAt = stok['updated_at'] != null
         ? DateFormat('dd MMM yyyy, HH:mm', 'id').format(
-            DateTime.tryParse(stok['updated_at'].toString()) ?? DateTime.now(),)
+            DateTime.tryParse(stok['updated_at'].toString()) ?? DateTime.now(),
+          )
         : '-';
 
     return Container(
@@ -307,9 +324,10 @@ class _StokAdminPageState extends State<StokAdminPage> {
         border: Border.all(color: statusColor.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),),
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: Column(
@@ -336,9 +354,10 @@ class _StokAdminPageState extends State<StokAdminPage> {
                       Text(
                         komoditas['nama']?.toString() ?? '-',
                         style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF212121),),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF212121),
+                        ),
                       ),
                       Text(
                         kecamatan['nama']?.toString() ?? '-',
@@ -357,16 +376,20 @@ class _StokAdminPageState extends State<StokAdminPage> {
                   child: Text(
                     status[0].toUpperCase() + status.substring(1),
                     style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: statusColor,),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: statusColor,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
                 IconButton(
                   onPressed: () => _showForm(context, existingStok: stok),
-                  icon: const Icon(Icons.edit_outlined,
-                      size: 18, color: Color(0xFF2E7D32),),
+                  icon: const Icon(
+                    Icons.edit_outlined,
+                    size: 18,
+                    color: Color(0xFF2E7D32),
+                  ),
                   constraints:
                       const BoxConstraints(minWidth: 32, minHeight: 32),
                   padding: EdgeInsets.zero,
@@ -388,14 +411,17 @@ class _StokAdminPageState extends State<StokAdminPage> {
                           Text(
                             '${_fmt.format(stokKg)} / ${_fmt.format(kapasitasKg)} kg',
                             style: TextStyle(
-                                fontSize: 11, color: Colors.grey[600],),
+                              fontSize: 11,
+                              color: Colors.grey[600],
+                            ),
                           ),
                           Text(
                             '${stokPersen.toStringAsFixed(1)}%',
                             style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: statusColor,),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: statusColor,
+                            ),
                           ),
                         ],
                       ),
@@ -442,17 +468,20 @@ class _StokAdminPageState extends State<StokAdminPage> {
           children: [
             const Icon(Icons.error_outline, size: 56, color: Color(0xFFEF5350)),
             const SizedBox(height: 12),
-            Text(_error!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.grey),),
+            Text(
+              _error!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.grey),
+            ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: _loadData,
               icon: const Icon(Icons.refresh),
               label: const Text('Coba Lagi'),
               style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2E7D32),
-                  foregroundColor: Colors.white,),
+                backgroundColor: const Color(0xFF2E7D32),
+                foregroundColor: Colors.white,
+              ),
             ),
           ],
         ),
@@ -501,7 +530,7 @@ class _StokAdminPageState extends State<StokAdminPage> {
   }
 }
 
-// ── Form Sheet ───────────────────────────────────────────
+// â”€â”€ Form Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _StokFormSheet extends StatefulWidget {
   final List<Map<String, dynamic>> komoditasList;
   final List<Map<String, dynamic>> kecamatanList;
@@ -562,144 +591,179 @@ class _StokFormSheetState extends State<_StokFormSheet> {
         ),
         padding: const EdgeInsets.all(20),
         child: SingleChildScrollView(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
                     color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              isEdit ? 'Edit Data Stok' : 'Tambah Data Stok',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 20),
-            Form(
-              key: _formKey,
-              child: Column(children: [
-                DropdownButtonFormField<String>(
-                  initialValue: _selKomoditas,
-                  decoration: InputDecoration(
-                    labelText: 'Komoditas',
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),),
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 12,),
-                  ),
-                  items: widget.komoditasList
-                      .map((k) => DropdownMenuItem<String>(
-                            value: k['id']?.toString(),
-                            child: Text(k['nama']?.toString() ?? ''),
-                          ),)
-                      .toList(),
-                  onChanged:
-                      isEdit ? null : (v) => setState(() => _selKomoditas = v),
-                  validator: (v) => v == null ? 'Pilih komoditas' : null,
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: _selKecamatan,
-                  decoration: InputDecoration(
-                    labelText: 'Kecamatan',
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),),
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 12,),
-                  ),
-                  items: widget.kecamatanList
-                      .map((k) => DropdownMenuItem<String>(
-                            value: k['id']?.toString(),
-                            child: Text(k['nama']?.toString() ?? ''),
-                          ),)
-                      .toList(),
-                  onChanged:
-                      isEdit ? null : (v) => setState(() => _selKecamatan = v),
-                  validator: (v) => v == null ? 'Pilih kecamatan' : null,
-                ),
-                if (isEdit)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6, bottom: 4),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.info_outline,
-                            size: 13, color: Colors.grey,),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Komoditas & kecamatan tidak dapat diubah',
-                          style:
-                              TextStyle(fontSize: 11, color: Colors.grey[500]),
+              const SizedBox(height: 16),
+              Text(
+                isEdit ? 'Edit Data Stok' : 'Tambah Data Stok',
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 20),
+              Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    DropdownButtonFormField<String>(
+                      initialValue: _selKomoditas,
+                      decoration: InputDecoration(
+                        labelText: 'Komoditas',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                      ],
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
+                      ),
+                      items: widget.komoditasList
+                          .map(
+                            (k) => DropdownMenuItem<String>(
+                              value: k['id']?.toString(),
+                              child: Text(k['nama']?.toString() ?? ''),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: isEdit
+                          ? null
+                          : (v) => setState(() => _selKomoditas = v),
+                      validator: (v) => v == null ? 'Pilih komoditas' : null,
                     ),
-                  ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _stokCtrl,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  decoration: InputDecoration(
-                    labelText: 'Stok Saat Ini (kg)',
-                    suffixText: 'kg',
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),),
-                  ),
-                  validator: (v) {
-                    if (v == null || v.isEmpty) return 'Masukkan stok';
-                    final val = double.tryParse(v);
-                    if (val == null || val < 0) return 'Nilai tidak valid';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _kapasitasCtrl,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  decoration: InputDecoration(
-                    labelText: 'Kapasitas Maksimal (kg)',
-                    suffixText: 'kg',
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),),
-                  ),
-                  validator: (v) {
-                    if (v == null || v.isEmpty) return 'Masukkan kapasitas';
-                    final val = double.tryParse(v);
-                    if (val == null || val <= 0) return 'Nilai tidak valid';
-                    final stok = double.tryParse(_stokCtrl.text) ?? 0;
-                    if (stok > val) return 'Kapasitas harus ≥ stok saat ini';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: _saving ? null : _submit,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2E7D32),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: _selKecamatan,
+                      decoration: InputDecoration(
+                        labelText: 'Kecamatan',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
+                      ),
+                      items: widget.kecamatanList
+                          .map(
+                            (k) => DropdownMenuItem<String>(
+                              value: k['id']?.toString(),
+                              child: Text(k['nama']?.toString() ?? ''),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: isEdit
+                          ? null
+                          : (v) => setState(() => _selKecamatan = v),
+                      validator: (v) => v == null ? 'Pilih kecamatan' : null,
                     ),
-                    child: _saving
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                                color: Colors.white, strokeWidth: 2,),)
-                        : Text(isEdit ? 'Perbarui Stok' : 'Simpan',
-                            style:
-                                const TextStyle(fontWeight: FontWeight.w600),),
-                  ),
+                    if (isEdit)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6, bottom: 4),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.info_outline,
+                              size: 13,
+                              color: Colors.grey,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Komoditas & kecamatan tidak dapat diubah',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _stokCtrl,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        labelText: 'Stok Saat Ini (kg)',
+                        suffixText: 'kg',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Masukkan stok';
+                        final val = double.tryParse(v);
+                        if (val == null || val < 0) return 'Nilai tidak valid';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _kapasitasCtrl,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        labelText: 'Kapasitas Maksimal (kg)',
+                        suffixText: 'kg',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Masukkan kapasitas';
+                        final val = double.tryParse(v);
+                        if (val == null || val <= 0) return 'Nilai tidak valid';
+                        final stok = double.tryParse(_stokCtrl.text) ?? 0;
+                        if (stok > val) {
+                          return 'Kapasitas harus â‰¥ stok saat ini';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: _saving ? null : _submit,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2E7D32),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: _saving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Text(
+                                isEdit ? 'Perbarui Stok' : 'Simpan',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],),
-            ),
-          ],),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -720,7 +784,7 @@ class _StokFormSheetState extends State<_StokFormSheet> {
   }
 }
 
-// ── Empty State ──────────────────────────────────────────
+// â”€â”€ Empty State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _EmptyState extends StatelessWidget {
   const _EmptyState();
 
@@ -734,8 +798,10 @@ class _EmptyState extends StatelessWidget {
           children: [
             Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey),
             SizedBox(height: 12),
-            Text('Tidak ada data stok',
-                style: TextStyle(color: Colors.grey, fontSize: 14),),
+            Text(
+              'Tidak ada data stok',
+              style: TextStyle(color: Colors.grey, fontSize: 14),
+            ),
           ],
         ),
       ),

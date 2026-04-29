@@ -1,9 +1,15 @@
+// Penjelasan file:
+// Feature: distribusi
+// Layer: logic
+// File: distribusi_bloc
+// Fungsi utama: File ini mengatur alur proses, event, state, dan aturan aplikasi.
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:dio/dio.dart';
 import '../data/distribusi_repository.dart';
 import 'distribusi_event.dart';
 import 'distribusi_state.dart';
 
+// Bloc ini menerima event dari UI, menjalankan proses, lalu mengeluarkan state baru.
 class DistribusiBloc extends Bloc<DistribusiEvent, DistribusiState> {
   final DistribusiRepository _repository;
 
@@ -15,14 +21,15 @@ class DistribusiBloc extends Bloc<DistribusiEvent, DistribusiState> {
     on<RefreshDistribusi>(_onRefresh);
   }
 
+// Handler ini dijalankan saat event tertentu diterima oleh bloc.
   Future<void> _onLoad(
-      LoadDistribusiList event, Emitter<DistribusiState> emit,) async {
+    LoadDistribusiList event,
+    Emitter<DistribusiState> emit,
+  ) async {
     emit(DistribusiLoading());
     try {
       final list = await _repository.fetchDistribusiList(status: event.status);
-      final items = list
-          .map((j) => DistribusiItem.fromJson(j))
-          .toList();
+      final items = list.map((j) => DistribusiItem.fromJson(j)).toList();
       emit(DistribusiLoaded(items));
     } on DioException catch (e) {
       emit(
@@ -38,13 +45,19 @@ class DistribusiBloc extends Bloc<DistribusiEvent, DistribusiState> {
     }
   }
 
+// Handler ini dijalankan saat event tertentu diterima oleh bloc.
   Future<void> _onRefresh(
-      RefreshDistribusi event, Emitter<DistribusiState> emit,) async {
+    RefreshDistribusi event,
+    Emitter<DistribusiState> emit,
+  ) async {
     add(LoadDistribusiList());
   }
 
+// Handler ini dijalankan saat event tertentu diterima oleh bloc.
   Future<void> _onCreateDistribusi(
-      CreateDistribusi event, Emitter<DistribusiState> emit,) async {
+    CreateDistribusi event,
+    Emitter<DistribusiState> emit,
+  ) async {
     emit(DistribusiSaving());
     try {
       await _repository.createDistribusi(
@@ -67,8 +80,11 @@ class DistribusiBloc extends Bloc<DistribusiEvent, DistribusiState> {
     }
   }
 
+// Handler ini dijalankan saat event tertentu diterima oleh bloc.
   Future<void> _onUpdateDistribusiStatus(
-      UpdateDistribusiStatus event, Emitter<DistribusiState> emit,) async {
+    UpdateDistribusiStatus event,
+    Emitter<DistribusiState> emit,
+  ) async {
     try {
       await _repository.updateDistribusiStatus(
         id: event.id,
@@ -88,8 +104,11 @@ class DistribusiBloc extends Bloc<DistribusiEvent, DistribusiState> {
     }
   }
 
+// Handler ini dijalankan saat event tertentu diterima oleh bloc.
   Future<void> _onDeleteDistribusi(
-      DeleteDistribusi event, Emitter<DistribusiState> emit,) async {
+    DeleteDistribusi event,
+    Emitter<DistribusiState> emit,
+  ) async {
     emit(DistribusiSaving());
     try {
       await _repository.deleteDistribusi(event.id);

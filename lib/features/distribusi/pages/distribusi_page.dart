@@ -1,3 +1,8 @@
+// Penjelasan file:
+// Feature: distribusi
+// Layer: ui
+// File: distribusi_page
+// Fungsi utama: File ini mengatur tampilan halaman, komponen visual, dan interaksi pengguna.
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -10,6 +15,8 @@ import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_state.dart';
 import '../../../core/repositories/kecamatan_repository.dart';
 import '../../../core/repositories/master_data_repository.dart';
+import '../../../core/widgets/last_updated_badge.dart';
+import '../../../core/widgets/live_refresh.dart';
 import '../data/distribusi_repository.dart';
 
 part '../widgets/distribusi_forms.dart';
@@ -30,6 +37,7 @@ class _DistribusiPageState extends State<DistribusiPage> {
   late final DistribusiRepository _distribusiRepository;
   late final KecamatanRepository _kecamatanRepository;
   Map<String, LatLng>? _kecamatanCoords;
+  DateTime? _lastUpdatedAt;
 
   @override
   void initState() {
@@ -55,7 +63,8 @@ class _DistribusiPageState extends State<DistribusiPage> {
   }
 
   Future<void> _loadRute(String distribusiId) async {
-    if (_ruteCache.containsKey(distribusiId) || _loadingRute.contains(distribusiId)) {
+    if (_ruteCache.containsKey(distribusiId) ||
+        _loadingRute.contains(distribusiId)) {
       return;
     }
 
@@ -66,7 +75,8 @@ class _DistribusiPageState extends State<DistribusiPage> {
 
     try {
       await _ensureKecamatanCoords();
-      final data = await _distribusiRepository.fetchDistribusiRoute(distribusiId);
+      final data =
+          await _distribusiRepository.fetchDistribusiRoute(distribusiId);
       final rawSteps = (data['rute'] as List<dynamic>? ?? []);
       final steps = rawSteps
           .whereType<Map<String, dynamic>>()
@@ -137,6 +147,8 @@ class _DistribusiPageState extends State<DistribusiPage> {
             ),
           );
           ctx.read<DistribusiBloc>().add(LoadDistribusiList());
+        } else if (state is DistribusiLoaded) {
+          setState(() => _lastUpdatedAt = DateTime.now());
         } else if (state is DistribusiError) {
           ScaffoldMessenger.of(ctx).showSnackBar(
             SnackBar(
@@ -147,40 +159,55 @@ class _DistribusiPageState extends State<DistribusiPage> {
         }
       },
       builder: (context, state) {
-        return Scaffold(
-          backgroundColor: const Color(0xFFF5F7FA),
-          floatingActionButton: canEdit
-              ? FloatingActionButton.extended(
-                  onPressed: () => _showCreateForm(context),
-                  label: const Text('Buat Distribusi'),
-                  icon: const Icon(Icons.add),
-                  backgroundColor: const Color(0xFF1565C0),
-                  foregroundColor: Colors.white,
-                )
-              : null,
-          body: RefreshIndicator(
-            color: const Color(0xFF2E7D32),
-            onRefresh: () async =>
-                context.read<DistribusiBloc>().add(RefreshDistribusi()),
-            child: CustomScrollView(
-              slivers: [
-                _buildHeader(state),
-                SliverToBoxAdapter(child: _buildFilters(state)),
-                if (state is DistribusiLoading)
-                  const SliverFillRemaining(
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        color: Color(0xFF2E7D32),
+        return LiveRefresh(
+          interval: const Duration(seconds: 30),
+          onRefresh: () async {
+            context.read<DistribusiBloc>().add(RefreshDistribusi());
+          },
+          child: Scaffold(
+            backgroundColor: const Color(0xFFF5F7FA),
+            floatingActionButton: canEdit
+                ? FloatingActionButton.extended(
+                    onPressed: () => _showCreateForm(context),
+                    label: const Text('Buat Distribusi'),
+                    icon: const Icon(Icons.add),
+                    backgroundColor: const Color(0xFF1565C0),
+                    foregroundColor: Colors.white,
+                  )
+                : null,
+            body: RefreshIndicator(
+              color: const Color(0xFF2E7D32),
+              onRefresh: () async =>
+                  context.read<DistribusiBloc>().add(RefreshDistribusi()),
+              child: CustomScrollView(
+                slivers: [
+                  _buildHeader(state),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: LastUpdatedBadge(timestamp: _lastUpdatedAt),
                       ),
                     ),
-                  )
-                else if (state is DistribusiError)
-                  SliverFillRemaining(child: _buildError((state).message))
-                else if (state is DistribusiLoaded)
-                  _buildList(state)
-                else
-                  const SliverFillRemaining(child: SizedBox()),
-              ],
+                  ),
+                  SliverToBoxAdapter(child: _buildFilters(state)),
+                  if (state is DistribusiLoading)
+                    const SliverFillRemaining(
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF2E7D32),
+                        ),
+                      ),
+                    )
+                  else if (state is DistribusiError)
+                    SliverFillRemaining(child: _buildError((state).message))
+                  else if (state is DistribusiLoaded)
+                    _buildList(state)
+                  else
+                    const SliverFillRemaining(child: SizedBox()),
+                ],
+              ),
             ),
           ),
         );
@@ -189,15 +216,19 @@ class _DistribusiPageState extends State<DistribusiPage> {
   }
 
   Widget _buildHeader(DistribusiState state) {
-    int proses = 0, selesai = 0, dijadwalkan = 0;
+    int proses = 0, selesai = 0, dijadwalkan = 0, dibatalkan = 0;
+    double totalKg = 0;
     if (state is DistribusiLoaded) {
       for (final item in state.items) {
+        totalKg += item.jumlahKg;
         if (item.status == 'proses') {
           proses++;
         } else if (item.status == 'selesai') {
           selesai++;
         } else if (item.status == 'dijadwalkan') {
           dijadwalkan++;
+        } else if (item.status == 'dibatalkan') {
+          dibatalkan++;
         }
       }
     }
@@ -249,6 +280,25 @@ class _DistribusiPageState extends State<DistribusiPage> {
                       Icons.local_shipping_outlined,
                       color: Colors.white.withValues(alpha: 0.8),
                       size: 28,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _summaryPill(
+                      '${state is DistribusiLoaded ? state.items.length : 0} rute',
+                      Icons.route_outlined,
+                    ),
+                    _summaryPill(
+                      '${NumberFormat.compact(locale: 'id').format(totalKg)} kg',
+                      Icons.inventory_2_outlined,
+                    ),
+                    _summaryPill(
+                      '$dibatalkan batal',
+                      Icons.cancel_outlined,
                     ),
                   ],
                 ),
@@ -308,47 +358,99 @@ class _DistribusiPageState extends State<DistribusiPage> {
     );
   }
 
+  Widget _summaryPill(String label, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 14),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildFilters(DistribusiState state) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: _statusList.map((s) {
-            final isSelected = _selectedStatus == s;
-            final color = _statusColor(s);
-            return GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedStatus = s;
-                  _expandedIndex = null;
-                });
-                context
-                    .read<DistribusiBloc>()
-                    .add(LoadDistribusiList(status: s));
-              },
-              child: Container(
-                margin: const EdgeInsets.only(right: 8),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                decoration: BoxDecoration(
-                  color: isSelected ? color : Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border:
-                      Border.all(color: isSelected ? color : Colors.grey[300]!),
-                ),
-                child: Text(
-                  s[0].toUpperCase() + s.substring(1),
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: isSelected ? Colors.white : Colors.grey[600],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Filter Status',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: Colors.grey[700],
+            ),
+          ),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: _statusList.map((s) {
+                final isSelected = _selectedStatus == s;
+                final color = _statusColor(s);
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _selectedStatus = s;
+                      _expandedIndex = null;
+                    });
+                    context
+                        .read<DistribusiBloc>()
+                        .add(LoadDistribusiList(status: s));
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected ? color : Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isSelected ? color : Colors.grey[300]!,
+                      ),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: color.withValues(alpha: 0.22),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Text(
+                      s[0].toUpperCase() + s.substring(1),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: isSelected ? Colors.white : Colors.grey[600],
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -361,8 +463,11 @@ class _DistribusiPageState extends State<DistribusiPage> {
           const Center(
             child: Column(
               children: [
-                Icon(Icons.local_shipping_outlined,
-                    size: 56, color: Colors.grey,),
+                Icon(
+                  Icons.local_shipping_outlined,
+                  size: 56,
+                  color: Colors.grey,
+                ),
                 SizedBox(height: 12),
                 Text(
                   'Tidak ada data distribusi',
@@ -420,7 +525,7 @@ class _DistribusiPageState extends State<DistribusiPage> {
                     children: [
                       Expanded(
                         child: Text(
-                          '${item.dari} → ${item.ke}',
+                          '${item.dari} â†’ ${item.ke}',
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -432,7 +537,9 @@ class _DistribusiPageState extends State<DistribusiPage> {
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4,),
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: statusColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(20),
@@ -459,7 +566,7 @@ class _DistribusiPageState extends State<DistribusiPage> {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        '${item.komoditas} — ${NumberFormat('#,##0', 'id').format(item.jumlahKg)} kg',
+                        '${item.komoditas} â€” ${NumberFormat('#,##0', 'id').format(item.jumlahKg)} kg',
                         style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                     ],
@@ -523,15 +630,19 @@ class _DistribusiPageState extends State<DistribusiPage> {
                     Expanded(
                       child: Row(
                         children: [
-                          const Text('Update: ',
-                              style: TextStyle(fontSize: 12, color: Colors.grey),),
+                          const Text(
+                            'Update: ',
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
                           const SizedBox(width: 8),
-                          if (item.status != 'selesai' && item.status != 'dibatalkan')
+                          if (item.status != 'selesai' &&
+                              item.status != 'dibatalkan')
                             _statusUpdateDropdown(context, item)
                           else
                             const Text(
                               'Status final',
-                              style: TextStyle(fontSize: 12, color: Colors.grey),
+                              style:
+                                  TextStyle(fontSize: 12, color: Colors.grey),
                             ),
                         ],
                       ),
@@ -551,11 +662,15 @@ class _DistribusiPageState extends State<DistribusiPage> {
                         ),
                       ),
                       style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                       ),
                     ),
                     TextButton.icon(
-                      onPressed: () => _confirmDeleteDistribusi(context, item.id),
+                      onPressed: () =>
+                          _confirmDeleteDistribusi(context, item.id),
                       icon: const Icon(
                         Icons.delete_outline,
                         size: 14,
@@ -569,7 +684,10 @@ class _DistribusiPageState extends State<DistribusiPage> {
                         ),
                       ),
                       style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                       ),
                     ),
                   ],
@@ -584,7 +702,8 @@ class _DistribusiPageState extends State<DistribusiPage> {
 
   void _showEditStatusDialog(BuildContext ctx, DistribusiItem item) {
     const statuses = ['dijadwalkan', 'proses', 'selesai', 'dibatalkan'];
-    String selected = statuses.contains(item.status) ? item.status : 'dijadwalkan';
+    String selected =
+        statuses.contains(item.status) ? item.status : 'dijadwalkan';
 
     showDialog(
       context: ctx,
@@ -689,7 +808,11 @@ class _DistribusiPageState extends State<DistribusiPage> {
       children: [
         Row(
           children: [
-            const Icon(Icons.route_outlined, size: 14, color: Color(0xFF1976D2)),
+            const Icon(
+              Icons.route_outlined,
+              size: 14,
+              color: Color(0xFF1976D2),
+            ),
             const SizedBox(width: 6),
             Text(
               'Rute ${rute.jarakKm.toStringAsFixed(1)} km',
@@ -708,14 +831,16 @@ class _DistribusiPageState extends State<DistribusiPage> {
           children: rute.steps
               .map(
                 (s) => Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: const Color(0xFFE3F2FD),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     s.nama,
-                    style: const TextStyle(fontSize: 11, color: Color(0xFF1565C0)),
+                    style:
+                        const TextStyle(fontSize: 11, color: Color(0xFF1565C0)),
                   ),
                 ),
               )
@@ -734,7 +859,8 @@ class _DistribusiPageState extends State<DistribusiPage> {
                 ),
                 children: [
                   TileLayer(
-                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                     userAgentPackageName: 'com.example.panganku_mobile',
                   ),
                   PolylineLayer(

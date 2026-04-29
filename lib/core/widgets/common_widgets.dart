@@ -1,7 +1,15 @@
+// Penjelasan file:
+// Feature: core
+// Layer: ui
+// File: common_widgets
+// Fungsi utama: File ini mengatur tampilan halaman, komponen visual, dan interaksi pengguna.
 import 'package:flutter/material.dart';
 import 'package:panganku_mobile/core/theme/app_theme.dart';
 
-/// Custom Card dengan shadow dan styling yang konsisten
+// File ini berisi widget umum yang bisa dipakai ulang
+// agar kita tidak perlu membuat komponen yang sama berulang kali.
+
+/// Card reusable dengan shadow dan styling yang konsisten.
 class CustomCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
@@ -24,6 +32,7 @@ class CustomCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Container utama untuk card.
     final card = Container(
       padding: padding ?? const EdgeInsets.all(AppTheme.spaceMD),
       margin: margin,
@@ -36,6 +45,7 @@ class CustomCard extends StatelessWidget {
     );
 
     if (onTap != null) {
+      // Jika card bisa diklik, bungkus dengan InkWell agar ada efek tap.
       return Material(
         color: Colors.transparent,
         child: InkWell(
@@ -50,7 +60,7 @@ class CustomCard extends StatelessWidget {
   }
 }
 
-/// Stat Card untuk menampilkan angka statistik
+/// Card statistik untuk menampilkan angka ringkasan.
 class StatCard extends StatelessWidget {
   final String label;
   final String value;
@@ -119,7 +129,7 @@ class StatCard extends StatelessWidget {
   }
 }
 
-/// Gradient Container
+/// Container reusable yang memakai gradient.
 class GradientContainer extends StatelessWidget {
   final Widget child;
   final Gradient gradient;
@@ -162,7 +172,7 @@ class GradientContainer extends StatelessWidget {
   }
 }
 
-/// Chip Label
+/// Chip sederhana untuk label kecil/status singkat.
 class LabelChip extends StatelessWidget {
   final String label;
   final Color? color;
@@ -211,7 +221,7 @@ class LabelChip extends StatelessWidget {
   }
 }
 
-/// Empty State Widget
+/// Widget kondisi kosong saat belum ada data.
 class EmptyState extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -275,7 +285,7 @@ class EmptyState extends StatelessWidget {
   }
 }
 
-/// Loading Widget
+/// Widget loading sederhana yang bisa dipakai ulang.
 class LoadingWidget extends StatelessWidget {
   final String? message;
 
@@ -301,7 +311,7 @@ class LoadingWidget extends StatelessWidget {
   }
 }
 
-/// Error Widget
+/// Widget error umum dengan tombol retry opsional.
 class ErrorStateWidget extends StatelessWidget {
   final String title;
   final String message;
@@ -363,7 +373,7 @@ class ErrorStateWidget extends StatelessWidget {
   }
 }
 
-/// Shimmer Loading Effect
+/// Kotak shimmer sederhana untuk efek loading visual.
 class ShimmerBox extends StatefulWidget {
   final double? width;
   final double? height;

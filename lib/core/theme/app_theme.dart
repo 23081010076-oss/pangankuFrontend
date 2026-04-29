@@ -1,8 +1,16 @@
+// Penjelasan file:
+// Feature: core
+// Layer: core-theme
+// File: app_theme
+// Fungsi utama: File ini mengatur warna, tema, dan gaya utama aplikasi.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+// AppTheme adalah tempat semua gaya visual utama aplikasi.
+// Tujuannya agar warna, jarak, font, dan bentuk komponen konsisten.
 class AppTheme {
-  // Color Palette - Natural & Modern
+  // Kumpulan warna utama aplikasi.
+  // Warna-warna ini dipakai berulang di banyak halaman.
   static const Color forest = Color(0xFF1E5631); // Dark forest green
   static const Color leaf = Color(0xFF2D6A4F); // Primary green
   static const Color moss = Color(0xFF40916C); // Secondary green
@@ -11,7 +19,7 @@ class AppTheme {
   static const Color cream = Color(0xFFFFF8F0); // Background
   static const Color sand = Color(0xFFFFF3E0); // Light background
 
-  // Functional Colors
+  // Warna fungsional untuk status seperti sukses, warning, error, dan info.
   static const Color success = Color(0xFF52B788);
   static const Color warning = Color(0xFFFFB020);
   static const Color error = Color(0xFFEF5350);
@@ -19,7 +27,7 @@ class AppTheme {
   static const Color info = Color(0xFF42A5F5);
   static const Color primaryLight = Color(0xFFE8F5E9); // Light green
 
-  // Neutral Colors
+  // Warna netral untuk teks, garis pembatas, background, dan surface.
   static const Color textPrimary = Color(0xFF1A1A1A);
   static const Color textSecondary = Color(0xFF666666);
   static const Color textTertiary = Color(0xFF999999);
@@ -27,7 +35,7 @@ class AppTheme {
   static const Color background = Color(0xFFFAFAFA);
   static const Color surface = Colors.white;
 
-  // Gradients
+  // Beberapa gradient siap pakai untuk header atau card tertentu.
   static const LinearGradient primaryGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
@@ -46,7 +54,7 @@ class AppTheme {
     colors: [cream, surface],
   );
 
-  // Typography
+  // Konfigurasi font dan style teks agar konsisten di semua halaman.
   static const String fontFamily = 'Inter';
 
   static const TextStyle h1 = TextStyle(
@@ -100,7 +108,7 @@ class AppTheme {
     letterSpacing: 0.5,
   );
 
-  // Shadows
+  // Shadow reusable untuk card biasa dan card yang lebih menonjol.
   static List<BoxShadow> get cardShadow => [
         BoxShadow(
           color: Colors.black.withValues(alpha: 0.04),
@@ -127,7 +135,7 @@ class AppTheme {
         ),
       ];
 
-  // Border Radius
+  // Radius standar untuk sudut komponen UI.
   static const BorderRadius radiusSmall = BorderRadius.all(Radius.circular(8));
   static const BorderRadius radiusMedium =
       BorderRadius.all(Radius.circular(12));
@@ -135,7 +143,7 @@ class AppTheme {
   static const BorderRadius radiusXLarge =
       BorderRadius.all(Radius.circular(24));
 
-  // Spacing
+  // Jarak standar agar layout tetap rapi dan konsisten.
   static const double spaceXS = 4;
   static const double spaceSM = 8;
   static const double spaceMD = 16;
@@ -143,6 +151,7 @@ class AppTheme {
   static const double spaceXL = 32;
   static const double spaceXXL = 48;
 
+  // ThemeData utama untuk mode terang aplikasi.
   static ThemeData get light => ThemeData(
         useMaterial3: true,
         colorScheme: const ColorScheme.light(
@@ -186,7 +195,9 @@ class AppTheme {
             elevation: 0,
             minimumSize: const Size(double.infinity, 54),
             padding: const EdgeInsets.symmetric(
-                horizontal: spaceLG, vertical: spaceMD,),
+              horizontal: spaceLG,
+              vertical: spaceMD,
+            ),
             shape: const RoundedRectangleBorder(borderRadius: radiusMedium),
             textStyle: button,
           ),
@@ -196,7 +207,9 @@ class AppTheme {
             foregroundColor: leaf,
             textStyle: button.copyWith(fontSize: 14),
             padding: const EdgeInsets.symmetric(
-                horizontal: spaceMD, vertical: spaceSM,),
+              horizontal: spaceMD,
+              vertical: spaceSM,
+            ),
           ),
         ),
         inputDecorationTheme: InputDecorationTheme(
@@ -219,7 +232,9 @@ class AppTheme {
             borderSide: BorderSide(color: error, width: 1.5),
           ),
           contentPadding: const EdgeInsets.symmetric(
-              horizontal: spaceMD, vertical: spaceMD,),
+            horizontal: spaceMD,
+            vertical: spaceMD,
+          ),
           hintStyle: bodyLarge.copyWith(color: textTertiary),
           labelStyle: bodyMedium,
         ),

@@ -1,19 +1,29 @@
+// Penjelasan file:
+// Feature: distribusi
+// Layer: api
+// File: distribusi_repository
+// Fungsi utama: File ini mengatur komunikasi data dengan backend atau sumber data aplikasi.
 import 'package:dio/dio.dart';
 
 import '../../../core/network/dio_client.dart';
 
+// Repository ini menjadi jembatan antara fitur dan sumber data/backend.
 class DistribusiRepository {
   final DioClient _client;
 
   DistribusiRepository(this._client);
 
-  Future<List<Map<String, dynamic>>> fetchDistribusiList({String? status}) async {
+// Method ini mengambil data dari backend lalu mengubahnya ke bentuk yang aman dipakai di aplikasi.
+  Future<List<Map<String, dynamic>>> fetchDistribusiList({
+    String? status,
+  }) async {
     final params = <String, dynamic>{'limit': 50};
     if (status != null && status != 'semua') {
       params['status'] = status;
     }
 
-    final response = await _client.dio.get('/distribusi', queryParameters: params);
+    final response =
+        await _client.dio.get('/distribusi', queryParameters: params);
     final data = response.data;
     final list = data['data'] ?? (data is List ? data : []);
 
@@ -21,9 +31,13 @@ class DistribusiRepository {
       return [];
     }
 
-    return list.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+    return list
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
   }
 
+// Method ini mengirim request untuk menambahkan data baru ke backend.
   Future<void> createDistribusi({
     required String dariKecamatanId,
     required String keKecamatanId,
@@ -46,6 +60,7 @@ class DistribusiRepository {
     await _client.dio.post('/distribusi', data: body);
   }
 
+// Method ini mengirim request untuk memperbarui data yang sudah ada di backend.
   Future<void> updateDistribusiStatus({
     required String id,
     required String status,
@@ -53,10 +68,12 @@ class DistribusiRepository {
     await _client.dio.put('/distribusi/$id/status', data: {'status': status});
   }
 
+// Method ini menghapus data berdasarkan id atau identitas tertentu.
   Future<void> deleteDistribusi(String id) async {
     await _client.dio.delete('/distribusi/$id');
   }
 
+// Method ini mengambil data dari backend lalu mengubahnya ke bentuk yang aman dipakai di aplikasi.
   Future<Map<String, dynamic>> fetchDistribusiRoute(String distribusiId) async {
     final res = await _client.dio.get('/distribusi/$distribusiId/rute');
     if (res.data is Map<String, dynamic>) {

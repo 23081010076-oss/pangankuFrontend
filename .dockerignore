@@ -1,0 +1,8 @@
+.dart_tool/
+.idea/
+build/
+.git/
+.gitignore
+run_mobile.out.log
+run_mobile.err.log
+flutter_01.log

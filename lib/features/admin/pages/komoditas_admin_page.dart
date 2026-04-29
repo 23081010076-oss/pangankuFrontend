@@ -1,6 +1,14 @@
+// Doc:
+// Tujuan: Menampilkan CRUD komoditas admin termasuk penggantian gambar komoditas via URL/Galeri dan preview.
+// Dipakai oleh: Route `/admin/komoditas` dari profil/admin menu mobile.
+// Dependensi utama: AdminRepository, DioException, AppConstants, Flutter Material, Bloc context, dan image_picker.
+// Fungsi public/utama: KomoditasAdminPage, _loadData, _create, _update, _showForm, _buildTile.
+// Side effect penting: HTTP read/write data komoditas, upload foto ke backend, dan render preview gambar jaringan.
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../../core/constants/app_constants.dart';
 import '../data/admin_repository.dart';
 
 class KomoditasAdminPage extends StatefulWidget {
@@ -42,12 +50,18 @@ class _KomoditasAdminPageState extends State<KomoditasAdminPage> {
     }
   }
 
-  Future<void> _create(String nama, String satuan, String kategori) async {
+  Future<void> _create(
+    String nama,
+    String satuan,
+    String kategori,
+    String? gambarUrl,
+  ) async {
     try {
       await _repository.createKomoditas(
         nama: nama,
         satuan: satuan,
         kategori: kategori,
+        gambarUrl: gambarUrl,
       );
       _showSnack('Komoditas berhasil ditambahkan');
       _loadData();
@@ -60,13 +74,19 @@ class _KomoditasAdminPageState extends State<KomoditasAdminPage> {
   }
 
   Future<void> _update(
-      String id, String nama, String satuan, String kategori,) async {
+    String id,
+    String nama,
+    String satuan,
+    String kategori,
+    String? gambarUrl,
+  ) async {
     try {
       await _repository.updateKomoditas(
         id: id,
         nama: nama,
         satuan: satuan,
         kategori: kategori,
+        gambarUrl: gambarUrl,
       );
       _showSnack('Komoditas berhasil diperbarui');
       _loadData();
@@ -87,8 +107,9 @@ class _KomoditasAdminPageState extends State<KomoditasAdminPage> {
             Text('Hapus "$nama"? Data harga terkait juga akan terpengaruh.'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Batal'),),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Hapus', style: TextStyle(color: Colors.red)),
@@ -112,10 +133,68 @@ class _KomoditasAdminPageState extends State<KomoditasAdminPage> {
 
   void _showSnack(String msg, {bool isError = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg),
-      backgroundColor: isError ? Colors.red[700] : const Color(0xFF2E7D32),
-    ),);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: isError ? Colors.red[700] : const Color(0xFF2E7D32),
+      ),
+    );
+  }
+
+  String? _normalizeImageUrl(String? rawUrl) {
+    final value = rawUrl?.trim() ?? '';
+    if (value.isEmpty) {
+      return null;
+    }
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      return value;
+    }
+    final apiUri = Uri.parse(AppConstants.baseUrl);
+    final origin =
+        '${apiUri.scheme}://${apiUri.host}${apiUri.hasPort ? ':${apiUri.port}' : ''}';
+    return value.startsWith('/') ? '$origin$value' : '$origin/$value';
+  }
+
+  Widget _buildKomoditasImage(String? rawUrl, {double size = 44}) {
+    final imageUrl = _normalizeImageUrl(rawUrl);
+    if (imageUrl == null) {
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: const Color(0xFFE8F5E9),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Icon(
+          Icons.inventory_2_outlined,
+          color: Color(0xFF2E7D32),
+          size: 22,
+        ),
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Image.network(
+        imageUrl,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: const Color(0xFFE8F5E9),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Icon(
+            Icons.broken_image_outlined,
+            color: Color(0xFF2E7D32),
+            size: 22,
+          ),
+        ),
+      ),
+    );
   }
 
   void _showForm({Map<String, dynamic>? existing}) {
@@ -123,6 +202,8 @@ class _KomoditasAdminPageState extends State<KomoditasAdminPage> {
     final satuanCtrl = TextEditingController(text: existing?['satuan'] ?? 'kg');
     final kategoriCtrl =
         TextEditingController(text: existing?['kategori'] ?? '');
+    final gambarCtrl =
+        TextEditingController(text: existing?['gambar_url']?.toString() ?? '');
     final isEdit = existing != null;
     final formKey = GlobalKey<FormState>();
 
@@ -177,6 +258,92 @@ class _KomoditasAdminPageState extends State<KomoditasAdminPage> {
                   prefixIcon: Icon(Icons.category_outlined),
                 ),
               ),
+              const SizedBox(height: 12),
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: gambarCtrl,
+                builder: (context, value, _) {
+                  final previewUrl = _normalizeImageUrl(value.text);
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          _buildKomoditasImage(value.text, size: 64),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              previewUrl == null
+                                  ? 'Belum ada gambar komoditas'
+                                  : 'Preview gambar akan dipakai di daftar komoditas.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                height: 1.35,
+                                color: Colors.grey[700],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: gambarCtrl,
+                        decoration: InputDecoration(
+                          labelText: 'URL Gambar',
+                          prefixIcon: const Icon(Icons.image_outlined),
+                          suffixIcon: IconButton(
+                            icon: const Icon(Icons.photo_library),
+                            tooltip: 'Pilih dari Galeri',
+                            onPressed: () async {
+                              final picker = ImagePicker();
+                              final pickedFile = await picker.pickImage(
+                                source: ImageSource.gallery,
+                              );
+                              if (pickedFile != null && context.mounted) {
+                                showDialog(
+                                  context: context,
+                                  barrierDismissible: false,
+                                  builder: (_) => const Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                );
+                                try {
+                                  final url = await _repository
+                                      .uploadFoto(pickedFile.path);
+                                  gambarCtrl.text = url;
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Gagal upload gambar'),
+                                      ),
+                                    );
+                                  }
+                                } finally {
+                                  if (context.mounted) Navigator.pop(context);
+                                }
+                              }
+                            },
+                          ),
+                          hintText: 'https://... atau /uploads/namafile.jpg',
+                        ),
+                        validator: (v) {
+                          final text = v?.trim() ?? '';
+                          if (text.isEmpty) {
+                            return null;
+                          }
+                          final uri = Uri.tryParse(text);
+                          final isHttp = uri != null &&
+                              (uri.scheme == 'http' || uri.scheme == 'https');
+                          if (isHttp || text.startsWith('/uploads/')) {
+                            return null;
+                          }
+                          return 'Gunakan URL http/https atau path /uploads/...';
+                        },
+                      ),
+                    ],
+                  );
+                },
+              ),
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
@@ -193,6 +360,9 @@ class _KomoditasAdminPageState extends State<KomoditasAdminPage> {
                               ? 'kg'
                               : satuanCtrl.text.trim(),
                           kategoriCtrl.text.trim(),
+                          gambarCtrl.text.trim().isEmpty
+                              ? null
+                              : gambarCtrl.text.trim(),
                         );
                       } else {
                         _create(
@@ -201,6 +371,9 @@ class _KomoditasAdminPageState extends State<KomoditasAdminPage> {
                               ? 'kg'
                               : satuanCtrl.text.trim(),
                           kategoriCtrl.text.trim(),
+                          gambarCtrl.text.trim().isEmpty
+                              ? null
+                              : gambarCtrl.text.trim(),
                         );
                       }
                     }
@@ -209,7 +382,8 @@ class _KomoditasAdminPageState extends State<KomoditasAdminPage> {
                     backgroundColor: const Color(0xFF2E7D32),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   child: Text(isEdit ? 'Simpan Perubahan' : 'Tambahkan'),
                 ),
@@ -255,15 +429,19 @@ class _KomoditasAdminPageState extends State<KomoditasAdminPage> {
           if (_loading)
             const SliverFillRemaining(
               child: Center(
-                  child: CircularProgressIndicator(color: Color(0xFF2E7D32)),),
+                child: CircularProgressIndicator(color: Color(0xFF2E7D32)),
+              ),
             )
           else if (_error != null)
             SliverFillRemaining(child: _buildError())
           else if (_list.isEmpty)
             const SliverFillRemaining(
               child: Center(
-                  child: Text('Belum ada komoditas',
-                      style: TextStyle(color: Colors.grey),),),
+                child: Text(
+                  'Belum ada komoditas',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ),
             )
           else
             SliverPadding(
@@ -284,6 +462,7 @@ class _KomoditasAdminPageState extends State<KomoditasAdminPage> {
     final nama = item['nama']?.toString() ?? '';
     final satuan = item['satuan']?.toString() ?? 'kg';
     final kategori = item['kategori']?.toString() ?? '';
+    final gambarUrl = item['gambar_url']?.toString();
     final id = item['id']?.toString() ?? '';
 
     return Container(
@@ -293,41 +472,41 @@ class _KomoditasAdminPageState extends State<KomoditasAdminPage> {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 6,
-              offset: const Offset(0, 2),),
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: const Color(0xFFE8F5E9),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(Icons.inventory_2_outlined,
-              color: Color(0xFF2E7D32), size: 22,),
+        leading: _buildKomoditasImage(gambarUrl),
+        title: Text(
+          nama,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
         ),
-        title: Text(nama,
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),),
         subtitle: Text(
-          '${satuan.isNotEmpty ? satuan : '-'}${kategori.isNotEmpty ? ' · $kategori' : ''}',
+          '${satuan.isNotEmpty ? satuan : '-'}${kategori.isNotEmpty ? ' Â· $kategori' : ''}',
           style: const TextStyle(fontSize: 12, color: Colors.grey),
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
-              icon: const Icon(Icons.edit_outlined,
-                  size: 20, color: Color(0xFF2E7D32),),
+              icon: const Icon(
+                Icons.edit_outlined,
+                size: 20,
+                color: Color(0xFF2E7D32),
+              ),
               onPressed: () => _showForm(existing: item),
               tooltip: 'Edit',
             ),
             IconButton(
-              icon: const Icon(Icons.delete_outline,
-                  size: 20, color: Colors.redAccent,),
+              icon: const Icon(
+                Icons.delete_outline,
+                size: 20,
+                color: Colors.redAccent,
+              ),
               onPressed: () => _delete(id, nama),
               tooltip: 'Hapus',
             ),
@@ -344,8 +523,10 @@ class _KomoditasAdminPageState extends State<KomoditasAdminPage> {
         children: [
           const Icon(Icons.error_outline, size: 48, color: Colors.grey),
           const SizedBox(height: 12),
-          Text(_error ?? 'Terjadi kesalahan',
-              style: const TextStyle(color: Colors.grey),),
+          Text(
+            _error ?? 'Terjadi kesalahan',
+            style: const TextStyle(color: Colors.grey),
+          ),
           const SizedBox(height: 16),
           ElevatedButton.icon(
             onPressed: _loadData,

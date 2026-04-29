@@ -1,25 +1,35 @@
+// Penjelasan file:
+// Feature: analytics
+// Layer: logic
+// File: analytics_bloc
+// Fungsi utama: File ini mengatur alur proses, event, state, dan aturan aplikasi.
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:dio/dio.dart';
 import '../data/analytics_repository.dart';
 import 'analytics_event.dart';
 import 'analytics_state.dart';
 
+// Bloc ini menerima event dari UI, menjalankan proses, lalu mengeluarkan state baru.
 class AnalyticsBloc extends Bloc<AnalyticsEvent, AnalyticsState> {
   final AnalyticsRepository _repository;
 
   AnalyticsBloc(this._repository) : super(AnalyticsInitial()) {
     on<LoadDashboardStats>(_onLoadDashboardStats);
-    on<RefreshDashboardStats>((event, _) => add(LoadDashboardStats(periode: event.periode)));
+    on<RefreshDashboardStats>(
+      (event, _) => add(LoadDashboardStats(periode: event.periode)),
+    );
     on<LoadStatusPangan>(_onLoadStatusPangan);
   }
 
+// Handler ini dijalankan saat event tertentu diterima oleh bloc.
   Future<void> _onLoadDashboardStats(
     LoadDashboardStats event,
     Emitter<AnalyticsState> emit,
   ) async {
     emit(AnalyticsLoading());
     try {
-      final data = await _repository.fetchDashboardStats(periode: event.periode);
+      final data =
+          await _repository.fetchDashboardStats(periode: event.periode);
       final stats = DashboardStats.fromJson(data);
       emit(AnalyticsLoaded(stats));
     } on DioException catch (e) {
@@ -36,6 +46,7 @@ class AnalyticsBloc extends Bloc<AnalyticsEvent, AnalyticsState> {
     }
   }
 
+// Handler ini dijalankan saat event tertentu diterima oleh bloc.
   Future<void> _onLoadStatusPangan(
     LoadStatusPangan event,
     Emitter<AnalyticsState> emit,
@@ -43,9 +54,7 @@ class AnalyticsBloc extends Bloc<AnalyticsEvent, AnalyticsState> {
     emit(StatusPanganLoading());
     try {
       final raw = await _repository.fetchStatusPangan();
-      final items = raw
-          .map((e) => StatusPanganItem.fromJson(e))
-          .toList();
+      final items = raw.map((e) => StatusPanganItem.fromJson(e)).toList();
       emit(StatusPanganLoaded(items));
     } on DioException catch (e) {
       emit(

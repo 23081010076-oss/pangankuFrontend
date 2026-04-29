@@ -1,3 +1,8 @@
+// Penjelasan file:
+// Feature: core
+// Layer: app-entry
+// File: main
+// Fungsi utama: File ini menjadi titik masuk utama aplikasi Flutter dan tempat konfigurasi awal.
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
@@ -11,6 +16,7 @@ import 'package:panganku_mobile/features/admin/data/admin_repository.dart';
 import 'package:panganku_mobile/features/admin/pages/harga_admin_page.dart';
 import 'package:panganku_mobile/features/admin/pages/kecamatan_admin_page.dart';
 import 'package:panganku_mobile/features/admin/pages/komoditas_admin_page.dart';
+import 'package:panganku_mobile/features/admin/pages/luas_lahan_admin_page.dart';
 import 'package:panganku_mobile/features/admin/pages/stok_admin_page.dart';
 import 'package:panganku_mobile/features/admin/pages/users_admin_page.dart';
 import 'package:panganku_mobile/features/analytics/bloc/analytics_bloc.dart';
@@ -80,21 +86,37 @@ class MyApp extends StatelessWidget {
         RepositoryProvider(create: (_) => KecamatanRepository(dioClient)),
         RepositoryProvider(create: (_) => AdminRepository(dioClient)),
       ],
-      child: BlocProvider(
-        create: (context) =>
-            AuthBloc(context.read<AuthRepository>())..add(AuthSessionChecked()),
-        child: BlocListener<AuthBloc, AuthState>(
-          listener: (context, state) {
-            if (state is AuthUnauthenticated) {
-              _router.go('/login');
-            }
-          },
-          child: MaterialApp.router(
-            title: 'PanganKu',
-            theme: AppTheme.light,
-            routerConfig: _router,
-            debugShowCheckedModeBanner: false,
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider(
+            create: (context) => AuthBloc(context.read<AuthRepository>())
+              ..add(AuthSessionChecked()),
           ),
+          BlocProvider(
+            create: (context) =>
+                NotifikasiBloc(context.read<NotifikasiRepository>()),
+          ),
+        ],
+        child: Builder(
+          builder: (context) {
+            dioClient.onSessionExpired = () {
+              context.read<AuthBloc>().add(AuthSessionExpired());
+            };
+
+            return BlocListener<AuthBloc, AuthState>(
+              listener: (context, state) {
+                if (state is AuthUnauthenticated) {
+                  _router.go('/login');
+                }
+              },
+              child: MaterialApp.router(
+                title: 'PanganKu',
+                theme: AppTheme.light,
+                routerConfig: _router,
+                debugShowCheckedModeBanner: false,
+              ),
+            );
+          },
         ),
       ),
     );
@@ -125,12 +147,10 @@ final _router = GoRouter(
     ),
     GoRoute(
       path: '/notifikasi',
-      builder: (context, state) => BlocProvider(
-        create: (context) =>
-            NotifikasiBloc(context.read<NotifikasiRepository>())
-              ..add(LoadNotifikasiList()),
-        child: const NotifikasiPage(),
-      ),
+      builder: (context, state) {
+        context.read<NotifikasiBloc>().add(LoadNotifikasiList());
+        return const NotifikasiPage();
+      },
     ),
     GoRoute(
       path: '/peta',
@@ -139,9 +159,8 @@ final _router = GoRouter(
     GoRoute(
       path: '/analytics',
       builder: (context, state) => BlocProvider(
-        create: (context) =>
-            AnalyticsBloc(context.read<AnalyticsRepository>())
-              ..add(LoadDashboardStats()),
+        create: (context) => AnalyticsBloc(context.read<AnalyticsRepository>())
+          ..add(LoadDashboardStats()),
         child: const AnalyticsPage(),
       ),
     ),
@@ -216,6 +235,10 @@ final _router = GoRouter(
     GoRoute(
       path: '/admin/harga',
       builder: (context, state) => const HargaAdminPage(),
+    ),
+    GoRoute(
+      path: '/admin/luas-lahan',
+      builder: (context, state) => const LuasLahanAdminPage(),
     ),
   ],
   redirect: (context, state) {

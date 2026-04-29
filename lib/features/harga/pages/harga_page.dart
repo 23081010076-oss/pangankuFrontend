@@ -1,14 +1,23 @@
+// Doc:
+// Tujuan: Menampilkan daftar harga komoditas serta shortcut ke halaman prediksi harga.
+// Dipakai oleh: DashboardPage tab harga dan route /harga.
+// Dependensi utama: HargaBloc event/state, AuthBloc, MasterDataRepository, GoRouter, harga_sheets.
+// Fungsi public/utama: HargaPage, _HargaPageState lifecycle, _buildHeader, _buildSearchBar, _buildKategoriFilter, _buildList.
+// Side effect penting: Dispatch load/refresh HargaBloc, membuka sheet CRUD, dan navigasi ke /harga/forecast.
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../bloc/harga_bloc.dart';
 import '../bloc/harga_event.dart';
 import '../bloc/harga_state.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_state.dart';
-import '../../../core/network/dio_client.dart';
 import '../../../core/repositories/master_data_repository.dart';
+import '../../../core/widgets/live_refresh.dart';
+import '../../../core/widgets/last_updated_badge.dart';
+import '../../../core/widgets/komoditas_image.dart';
 
 part '../widgets/harga_sheets.dart';
 
@@ -23,6 +32,7 @@ class _HargaPageState extends State<HargaPage> {
   String _selectedKategori = 'Semua';
   String _searchQuery = '';
   final _searchCtrl = TextEditingController();
+  DateTime? _lastUpdatedAt;
 
   @override
   void initState() {
@@ -64,6 +74,9 @@ class _HargaPageState extends State<HargaPage> {
             ),
           );
         }
+        if (state is HargaLoaded) {
+          setState(() => _lastUpdatedAt = DateTime.now());
+        }
         if (state is HargaError) {
           ScaffoldMessenger.of(ctx).showSnackBar(
             SnackBar(
@@ -76,51 +89,64 @@ class _HargaPageState extends State<HargaPage> {
       builder: (ctx, state) {
         final authState = ctx.read<AuthBloc>().state;
         final role = authState is AuthAuthenticated ? authState.role : '';
-        final canUpdate = role == 'admin' ||
-            role == 'petugas' ||
-            role == 'petani' ||
-            role == 'pedagang';
+        final canUpdate =
+            role == 'admin' || role == 'petugas' || role == 'petani';
         final canDelete = role == 'admin' || role == 'petugas';
 
-        return Scaffold(
-          backgroundColor: const Color(0xFFF5F7FA),
+        return LiveRefresh(
+          interval: const Duration(seconds: 25),
+          onRefresh: () async {
+            ctx.read<HargaBloc>().add(RefreshHarga());
+          },
+          child: Scaffold(
+            backgroundColor: const Color(0xFFF5F7FA),
             floatingActionButton: canUpdate
-              ? FloatingActionButton.extended(
-                  onPressed: () => _showCreateForm(ctx),
-                  label: const Text('Tambah Data'),
-                  icon: const Icon(Icons.add),
-                  backgroundColor: const Color(0xFF2E7D32),
-                  foregroundColor: Colors.white,
-                )
-              : null,
-          body: RefreshIndicator(
-            color: const Color(0xFF2E7D32),
-            onRefresh: () async => ctx.read<HargaBloc>().add(RefreshHarga()),
-            child: CustomScrollView(
-              slivers: [
-                _buildHeader(),
-                SliverToBoxAdapter(child: _buildSearchBar()),
-                if (state is HargaLoaded) ...[
+                ? FloatingActionButton.extended(
+                    onPressed: () => _showCreateForm(ctx),
+                    label: const Text('Tambah Data'),
+                    icon: const Icon(Icons.add),
+                    backgroundColor: const Color(0xFF2E7D32),
+                    foregroundColor: Colors.white,
+                  )
+                : null,
+            body: RefreshIndicator(
+              color: const Color(0xFF2E7D32),
+              onRefresh: () async => ctx.read<HargaBloc>().add(RefreshHarga()),
+              child: CustomScrollView(
+                slivers: [
+                  _buildHeader(),
                   SliverToBoxAdapter(
-                    child: _buildKategoriFilter(state.kategoris),
-                  ),
-                  _buildList(ctx, state, canUpdate, canDelete),
-                ] else if (state is HargaLoading) ...[
-                  const SliverFillRemaining(
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        color: Color(0xFF2E7D32),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: LastUpdatedBadge(timestamp: _lastUpdatedAt),
                       ),
                     ),
                   ),
-                ] else if (state is HargaError) ...[
-                  SliverFillRemaining(
-                    child: _buildError(ctx, state.message),
-                  ),
-                ] else ...[
-                  const SliverFillRemaining(child: SizedBox()),
+                  SliverToBoxAdapter(child: _buildSearchBar()),
+                  if (state is HargaLoaded) ...[
+                    SliverToBoxAdapter(
+                      child: _buildKategoriFilter(state.kategoris),
+                    ),
+                    _buildList(ctx, state, canUpdate, canDelete),
+                  ] else if (state is HargaLoading) ...[
+                    const SliverFillRemaining(
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF2E7D32),
+                        ),
+                      ),
+                    ),
+                  ] else if (state is HargaError) ...[
+                    SliverFillRemaining(
+                      child: _buildError(ctx, state.message),
+                    ),
+                  ] else ...[
+                    const SliverFillRemaining(child: SizedBox()),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         );
@@ -146,25 +172,62 @@ class _HargaPageState extends State<HargaPage> {
             bottomRight: Radius.circular(28),
           ),
         ),
-        child: const SafeArea(
+        child: SafeArea(
           bottom: false,
           child: Padding(
-            padding: EdgeInsets.fromLTRB(16, 16, 16, 24),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Harga Komoditas',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Data harga terkini dari seluruh kecamatan',
-                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Harga Komoditas',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Data harga terkini dari seluruh kecamatan',
+                            style:
+                                TextStyle(color: Colors.white70, fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    OutlinedButton.icon(
+                      onPressed: () => context.push('/harga/forecast'),
+                      icon: const Icon(Icons.auto_graph_outlined, size: 16),
+                      label: const Text('Prediksi'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.35),
+                        ),
+                        backgroundColor: Colors.white.withValues(alpha: 0.10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        textStyle: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -305,7 +368,8 @@ class _HargaPageState extends State<HargaPage> {
     bool canUpdate,
     bool canDelete,
   ) {
-    final isRecordPerKecamatan = item.kecamatanId.isNotEmpty && item.id.isNotEmpty;
+    final isRecordPerKecamatan =
+        item.kecamatanId.isNotEmpty && item.id.isNotEmpty;
     final trendColor = item.trend == 'NAIK'
         ? const Color(0xFFC62828)
         : item.trend == 'TURUN'
@@ -335,19 +399,11 @@ class _HargaPageState extends State<HargaPage> {
         ),
         child: Row(
           children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE8F5E9),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Center(
-                child: Text(
-                  _emoji(item.komoditasNama, item.kategori),
-                  style: const TextStyle(fontSize: 22),
-                ),
-              ),
+            KomoditasImage(
+              gambarUrl: item.gambarUrl,
+              nama: item.komoditasNama,
+              kategori: item.kategori,
+              size: 46,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -488,7 +544,8 @@ class _HargaPageState extends State<HargaPage> {
             children: [
               TextFormField(
                 controller: hargaCtrl,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(
                   labelText: 'Harga per kg',
                   prefixText: 'Rp ',
@@ -504,7 +561,8 @@ class _HargaPageState extends State<HargaPage> {
                   final picked = await showDatePicker(
                     context: dialogCtx2,
                     initialDate: tanggal,
-                    firstDate: DateTime.now().subtract(const Duration(days: 90)),
+                    firstDate:
+                        DateTime.now().subtract(const Duration(days: 90)),
                     lastDate: DateTime.now(),
                   );
                   if (picked != null) {
@@ -521,7 +579,8 @@ class _HargaPageState extends State<HargaPage> {
             ),
             ElevatedButton(
               onPressed: () {
-                final value = double.tryParse(hargaCtrl.text.replaceAll(',', '.'));
+                final value =
+                    double.tryParse(hargaCtrl.text.replaceAll(',', '.'));
                 if (value == null || value <= 0) {
                   ScaffoldMessenger.of(ctx).showSnackBar(
                     SnackBar(
@@ -617,33 +676,5 @@ class _HargaPageState extends State<HargaPage> {
         ],
       ),
     );
-  }
-
-  String _emoji(String nama, String kategori) {
-    final n = nama.toLowerCase();
-    if (n.contains('beras')) return '\u{1F33E}';
-    if (n.contains('jagung')) return '\u{1F33D}';
-    if (n.contains('kedelai')) return '\u{1FAD8}';
-    if (n.contains('kacang')) return '\u{1F95C}';
-    if (n.contains('cabai') || n.contains('cabai')) return '\u{1F336}';
-    if (n.contains('bawang')) return '\u{1F9C5}';
-    if (n.contains('telur')) return '\u{1F95A}';
-    if (n.contains('daging')) return '\u{1F969}';
-    if (n.contains('ayam')) return '\u{1F357}';
-    if (n.contains('ikan')) return '\u{1F41F}';
-    if (n.contains('gula')) return '\u{1F36C}';
-    if (n.contains('minyak')) return '\u{1FAD9}';
-    switch (kategori.toLowerCase()) {
-      case 'padi-padian':
-        return '\u{1F33E}';
-      case 'kacang-kacangan':
-        return '\u{1F95C}';
-      case 'sayuran':
-        return '\u{1F96C}';
-      case 'hewani':
-        return '\u{1F969}';
-      default:
-        return '\u{1F6D2}';
-    }
   }
 }

@@ -1,3 +1,8 @@
+// Penjelasan file:
+// Feature: distribusi
+// Layer: ui
+// File: distribusi_forms
+// Fungsi utama: File ini mengatur tampilan halaman, komponen visual, dan interaksi pengguna.
 part of '../pages/distribusi_page.dart';
 
 class _RuteData {
@@ -336,4 +341,3 @@ class _CreateDistribusiSheetState extends State<_CreateDistribusiSheet> {
     Navigator.of(ctx).pop();
   }
 }
-

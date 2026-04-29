@@ -1,12 +1,19 @@
+// Penjelasan file:
+// Feature: profile
+// Layer: api
+// File: profile_repository
+// Fungsi utama: File ini mengatur komunikasi data dengan backend atau sumber data aplikasi.
 import 'package:dio/dio.dart';
 
 import '../../../core/network/dio_client.dart';
 
+// Repository ini menjadi jembatan antara fitur dan sumber data/backend.
 class ProfileRepository {
   final DioClient _client;
 
   ProfileRepository(this._client);
 
+// Method ini mengambil data dari backend lalu mengubahnya ke bentuk yang aman dipakai di aplikasi.
   Future<Map<String, dynamic>> fetchProfile() async {
     final response = await _client.dio.get('/users/profile');
     if (response.data is Map<String, dynamic>) {
@@ -15,6 +22,7 @@ class ProfileRepository {
     return {};
   }
 
+// Method ini mengirim request untuk memperbarui data yang sudah ada di backend.
   Future<void> updateProfile({
     required String name,
     String? phone,
@@ -30,6 +38,7 @@ class ProfileRepository {
     );
   }
 
+// Method ini berisi logika utama sesuai kebutuhan fitur pada file ini.
   Future<void> changePassword({
     required String oldPassword,
     required String newPassword,

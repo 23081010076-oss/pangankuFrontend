@@ -1,9 +1,15 @@
+// Penjelasan file:
+// Feature: notifikasi
+// Layer: logic
+// File: notifikasi_bloc
+// Fungsi utama: File ini mengatur alur proses, event, state, dan aturan aplikasi.
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:dio/dio.dart';
 import '../data/notifikasi_repository.dart';
 import 'notifikasi_event.dart';
 import 'notifikasi_state.dart';
 
+// Bloc ini menerima event dari UI, menjalankan proses, lalu mengeluarkan state baru.
 class NotifikasiBloc extends Bloc<NotifikasiEvent, NotifikasiState> {
   final NotifikasiRepository _repository;
 
@@ -14,14 +20,15 @@ class NotifikasiBloc extends Bloc<NotifikasiEvent, NotifikasiState> {
     on<RefreshNotifikasi>(_onRefresh);
   }
 
+// Handler ini dijalankan saat event tertentu diterima oleh bloc.
   Future<void> _onLoad(
-      LoadNotifikasiList event, Emitter<NotifikasiState> emit,) async {
+    LoadNotifikasiList event,
+    Emitter<NotifikasiState> emit,
+  ) async {
     emit(NotifikasiLoading());
     try {
       final list = await _repository.fetchNotifikasiList();
-      final items = list
-          .map((j) => NotifikasiItem.fromJson(j))
-          .toList();
+      final items = list.map((j) => NotifikasiItem.fromJson(j)).toList();
       emit(NotifikasiLoaded(items));
     } on DioException catch (e) {
       emit(
@@ -34,8 +41,11 @@ class NotifikasiBloc extends Bloc<NotifikasiEvent, NotifikasiState> {
     }
   }
 
+// Handler ini dijalankan saat event tertentu diterima oleh bloc.
   Future<void> _onMarkAsRead(
-      MarkAsRead event, Emitter<NotifikasiState> emit,) async {
+    MarkAsRead event,
+    Emitter<NotifikasiState> emit,
+  ) async {
     try {
       await _repository.markAsRead(event.id);
       if (state is NotifikasiLoaded) {
@@ -48,8 +58,11 @@ class NotifikasiBloc extends Bloc<NotifikasiEvent, NotifikasiState> {
     } catch (_) {}
   }
 
+// Handler ini dijalankan saat event tertentu diterima oleh bloc.
   Future<void> _onMarkAllRead(
-      MarkAllRead event, Emitter<NotifikasiState> emit,) async {
+    MarkAllRead event,
+    Emitter<NotifikasiState> emit,
+  ) async {
     try {
       await _repository.markAllRead();
       if (state is NotifikasiLoaded) {
@@ -62,8 +75,11 @@ class NotifikasiBloc extends Bloc<NotifikasiEvent, NotifikasiState> {
     } catch (_) {}
   }
 
+// Handler ini dijalankan saat event tertentu diterima oleh bloc.
   Future<void> _onRefresh(
-      RefreshNotifikasi event, Emitter<NotifikasiState> emit,) async {
+    RefreshNotifikasi event,
+    Emitter<NotifikasiState> emit,
+  ) async {
     add(LoadNotifikasiList());
   }
 }

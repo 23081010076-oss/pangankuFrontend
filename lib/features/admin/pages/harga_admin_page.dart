@@ -1,3 +1,8 @@
+// Penjelasan file:
+// Feature: admin
+// Layer: ui
+// File: harga_admin_page
+// Fungsi utama: File ini mengatur tampilan halaman, komponen visual, dan interaksi pengguna.
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -170,6 +175,18 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
     _loadHarga(reset: true);
   }
 
+  int get _uniqueKomoditasCount => _hargaList
+      .map((item) => item['komoditas_id']?.toString() ?? '')
+      .where((id) => id.isNotEmpty)
+      .toSet()
+      .length;
+
+  int get _uniqueKecamatanCount => _hargaList
+      .map((item) => item['kecamatan_id']?.toString() ?? '')
+      .where((id) => id.isNotEmpty)
+      .toSet()
+      .length;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -195,9 +212,10 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
                 title: const Text(
                   'Manajemen Harga',
                   style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,),
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 background: Container(
                   decoration: const BoxDecoration(
@@ -220,7 +238,8 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
             if (_loading)
               const SliverFillRemaining(
                 child: Center(
-                    child: CircularProgressIndicator(color: Color(0xFF2E7D32)),),
+                  child: CircularProgressIndicator(color: Color(0xFF2E7D32)),
+                ),
               )
             else if (_error != null)
               SliverFillRemaining(child: _buildError())
@@ -230,14 +249,16 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-                  child: Row(children: [
-                    Icon(Icons.history, size: 14, color: Colors.grey[500]),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Data historis — tidak dapat diedit',
-                      style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-                    ),
-                  ],),
+                  child: Row(
+                    children: [
+                      Icon(Icons.history, size: 14, color: Colors.grey[500]),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Data historis â€” tidak dapat diedit',
+                        style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               SliverPadding(
@@ -250,7 +271,8 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
                           padding: EdgeInsets.all(16),
                           child: Center(
                             child: CircularProgressIndicator(
-                                color: Color(0xFF2E7D32),),
+                              color: Color(0xFF2E7D32),
+                            ),
                           ),
                         );
                       }
@@ -271,83 +293,201 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Filter',
-              style: TextStyle(
+          Row(
+            children: [
+              Expanded(
+                child: _summaryCard(
+                  'Data Tampil',
+                  '${_hargaList.length}',
+                  Icons.receipt_long_outlined,
+                  const Color(0xFF2E7D32),
+                  const Color(0xFFE8F5E9),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _summaryCard(
+                  'Komoditas',
+                  '$_uniqueKomoditasCount',
+                  Icons.inventory_2_outlined,
+                  const Color(0xFF1976D2),
+                  const Color(0xFFE3F2FD),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _summaryCard(
+                  'Kecamatan',
+                  '$_uniqueKecamatanCount',
+                  Icons.location_city_outlined,
+                  const Color(0xFFF57C00),
+                  const Color(0xFFFFF3E0),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Filter',
+                style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: Colors.grey,),),
-          const SizedBox(height: 8),
-          Row(children: [
-            Expanded(
-              child: DropdownButtonFormField<String?>(
-                initialValue: _filterKomoditas,
-                isExpanded: true,
-                decoration: InputDecoration(
-                  labelText: 'Komoditas',
-                  labelStyle: const TextStyle(fontSize: 12),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide.none,),
-                  enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: Colors.grey[200]!),),
+                  color: Colors.grey,
                 ),
-                items: [
-                  const DropdownMenuItem<String?>(
-                      value: null, child: Text('Semua komoditas'),),
-                  ..._komoditasList.map((k) => DropdownMenuItem<String?>(
-                        value: k['id']?.toString(),
-                        child: Text(k['nama']?.toString() ?? '',
-                            overflow: TextOverflow.ellipsis,),
-                      ),),
-                ],
-                onChanged: (v) {
-                  setState(() => _filterKomoditas = v);
-                  _applyFilter();
-                },
               ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: DropdownButtonFormField<String?>(
-                initialValue: _filterKecamatan,
-                isExpanded: true,
-                decoration: InputDecoration(
-                  labelText: 'Kecamatan',
-                  labelStyle: const TextStyle(fontSize: 12),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide.none,),
-                  enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: Colors.grey[200]!),),
-                ),
-                items: [
-                  const DropdownMenuItem<String?>(
-                      value: null, child: Text('Semua kecamatan'),),
-                  ..._kecamatanList.map((k) => DropdownMenuItem<String?>(
-                        value: k['id']?.toString(),
-                        child: Text(k['nama']?.toString() ?? '',
-                            overflow: TextOverflow.ellipsis,),
-                      ),),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<String?>(
+                      initialValue: _filterKomoditas,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: 'Komoditas',
+                        labelStyle: const TextStyle(fontSize: 12),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey[200]!),
+                        ),
+                      ),
+                      items: [
+                        const DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text('Semua komoditas'),
+                        ),
+                        ..._komoditasList.map(
+                          (k) => DropdownMenuItem<String?>(
+                            value: k['id']?.toString(),
+                            child: Text(
+                              k['nama']?.toString() ?? '',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                      ],
+                      onChanged: (v) {
+                        setState(() => _filterKomoditas = v);
+                        _applyFilter();
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: DropdownButtonFormField<String?>(
+                      initialValue: _filterKecamatan,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: 'Kecamatan',
+                        labelStyle: const TextStyle(fontSize: 12),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.grey[200]!),
+                        ),
+                      ),
+                      items: [
+                        const DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text('Semua kecamatan'),
+                        ),
+                        ..._kecamatanList.map(
+                          (k) => DropdownMenuItem<String?>(
+                            value: k['id']?.toString(),
+                            child: Text(
+                              k['nama']?.toString() ?? '',
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                      ],
+                      onChanged: (v) {
+                        setState(() => _filterKecamatan = v);
+                        _applyFilter();
+                      },
+                    ),
+                  ),
                 ],
-                onChanged: (v) {
-                  setState(() => _filterKecamatan = v);
-                  _applyFilter();
-                },
               ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryCard(
+    String label,
+    String value,
+    IconData icon,
+    Color fg,
+    Color bg,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(10),
             ),
-          ],),
+            child: Icon(icon, size: 18, color: fg),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF212121),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
@@ -372,9 +512,10 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 6,
-              offset: const Offset(0, 2),),
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: Padding(
@@ -388,8 +529,11 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
                 color: const Color(0xFF2E7D32).withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.price_change_outlined,
-                  color: Color(0xFF2E7D32), size: 18,),
+              child: const Icon(
+                Icons.price_change_outlined,
+                color: Color(0xFF2E7D32),
+                size: 18,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -399,9 +543,10 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
                   Text(
                     komoditas['nama']?.toString() ?? '-',
                     style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF212121),),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF212121),
+                    ),
                   ),
                   Text(
                     kecamatan['nama']?.toString() ?? '-',
@@ -416,9 +561,10 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
                 Text(
                   'Rp ${_currFmt.format(hargaPerKg)}/kg',
                   style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF2E7D32),),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF2E7D32),
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Row(
@@ -475,17 +621,20 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
           children: [
             const Icon(Icons.error_outline, size: 56, color: Color(0xFFEF5350)),
             const SizedBox(height: 12),
-            Text(_error!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.grey),),
+            Text(
+              _error!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.grey),
+            ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: () => _loadHarga(reset: true),
               icon: const Icon(Icons.refresh),
               label: const Text('Coba Lagi'),
               style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2E7D32),
-                  foregroundColor: Colors.white,),
+                backgroundColor: const Color(0xFF2E7D32),
+                foregroundColor: Colors.white,
+              ),
             ),
           ],
         ),
@@ -507,7 +656,7 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
   }
 }
 
-// ── Harga Form Sheet ─────────────────────────────────────
+// â”€â”€ Harga Form Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _HargaFormSheet extends StatefulWidget {
   final List<Map<String, dynamic>> komoditasList;
   final List<Map<String, dynamic>> kecamatanList;
@@ -567,135 +716,167 @@ class _HargaFormSheetState extends State<_HargaFormSheet> {
         ),
         padding: const EdgeInsets.all(20),
         child: SingleChildScrollView(
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
                     color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Tambah Data Harga',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Data harga bersifat historis dan tidak dapat diubah',
-              style: TextStyle(fontSize: 11, color: Colors.grey[500]),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            Form(
-              key: _formKey,
-              child: Column(children: [
-                DropdownButtonFormField<String>(
-                  initialValue: _selKomoditas,
-                  isExpanded: true,
-                  decoration: InputDecoration(
-                    labelText: 'Komoditas',
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),),
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 12,),
-                  ),
-                  items: widget.komoditasList
-                      .map((k) => DropdownMenuItem<String>(
-                            value: k['id']?.toString(),
-                            child: Text(k['nama']?.toString() ?? '',
-                                overflow: TextOverflow.ellipsis,),
-                          ),)
-                      .toList(),
-                  onChanged: (v) => setState(() => _selKomoditas = v),
-                  validator: (v) => v == null ? 'Pilih komoditas' : null,
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: _selKecamatan,
-                  isExpanded: true,
-                  decoration: InputDecoration(
-                    labelText: 'Kecamatan',
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),),
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 12,),
-                  ),
-                  items: widget.kecamatanList
-                      .map((k) => DropdownMenuItem<String>(
-                            value: k['id']?.toString(),
-                            child: Text(k['nama']?.toString() ?? '',
-                                overflow: TextOverflow.ellipsis,),
-                          ),)
-                      .toList(),
-                  onChanged: (v) => setState(() => _selKecamatan = v),
-                  validator: (v) => v == null ? 'Pilih kecamatan' : null,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _hargaCtrl,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  decoration: InputDecoration(
-                    labelText: 'Harga per kg',
-                    prefixText: 'Rp ',
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),),
-                  ),
-                  validator: (v) {
-                    if (v == null || v.isEmpty) return 'Masukkan harga';
-                    final val = double.tryParse(v.replaceAll(',', '.'));
-                    if (val == null || val <= 0) return 'Nilai tidak valid';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                GestureDetector(
-                  onTap: () => _pickDate(context),
-                  child: AbsorbPointer(
-                    child: TextFormField(
-                      readOnly: true,
+              const SizedBox(height: 16),
+              const Text(
+                'Tambah Data Harga',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Data harga bersifat historis dan tidak dapat diubah',
+                style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              Form(
+                key: _formKey,
+                child: Column(
+                  children: [
+                    DropdownButtonFormField<String>(
+                      initialValue: _selKomoditas,
+                      isExpanded: true,
                       decoration: InputDecoration(
-                        labelText: 'Tanggal',
-                        hintText: tanggalFmt,
-                        prefixIcon:
-                            const Icon(Icons.calendar_today_outlined, size: 18),
-                        suffixIcon:
-                            const Icon(Icons.edit_calendar_outlined, size: 18),
+                        labelText: 'Komoditas',
                         border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
                       ),
-                      controller: TextEditingController(text: tanggalFmt),
+                      items: widget.komoditasList
+                          .map(
+                            (k) => DropdownMenuItem<String>(
+                              value: k['id']?.toString(),
+                              child: Text(
+                                k['nama']?.toString() ?? '',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) => setState(() => _selKomoditas = v),
+                      validator: (v) => v == null ? 'Pilih komoditas' : null,
                     ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: _saving ? null : _submit,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2E7D32),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: _selKecamatan,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: 'Kecamatan',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
+                      ),
+                      items: widget.kecamatanList
+                          .map(
+                            (k) => DropdownMenuItem<String>(
+                              value: k['id']?.toString(),
+                              child: Text(
+                                k['nama']?.toString() ?? '',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) => setState(() => _selKecamatan = v),
+                      validator: (v) => v == null ? 'Pilih kecamatan' : null,
                     ),
-                    child: _saving
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                                color: Colors.white, strokeWidth: 2,),)
-                        : const Text('Simpan',
-                            style: TextStyle(fontWeight: FontWeight.w600),),
-                  ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _hargaCtrl,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        labelText: 'Harga per kg',
+                        prefixText: 'Rp ',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Masukkan harga';
+                        final val = double.tryParse(v.replaceAll(',', '.'));
+                        if (val == null || val <= 0) return 'Nilai tidak valid';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: () => _pickDate(context),
+                      child: AbsorbPointer(
+                        child: TextFormField(
+                          readOnly: true,
+                          decoration: InputDecoration(
+                            labelText: 'Tanggal',
+                            hintText: tanggalFmt,
+                            prefixIcon: const Icon(
+                              Icons.calendar_today_outlined,
+                              size: 18,
+                            ),
+                            suffixIcon: const Icon(
+                              Icons.edit_calendar_outlined,
+                              size: 18,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          controller: TextEditingController(text: tanggalFmt),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: _saving ? null : _submit,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2E7D32),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: _saving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(
+                                'Simpan',
+                                style: TextStyle(fontWeight: FontWeight.w600),
+                              ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],),
-            ),
-          ],),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -714,7 +895,7 @@ class _HargaFormSheetState extends State<_HargaFormSheet> {
   }
 }
 
-// ── Empty State ──────────────────────────────────────────
+// â”€â”€ Empty State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _EmptyState extends StatelessWidget {
   const _EmptyState();
 
@@ -728,8 +909,10 @@ class _EmptyState extends StatelessWidget {
           children: [
             Icon(Icons.price_change_outlined, size: 64, color: Colors.grey),
             SizedBox(height: 12),
-            Text('Belum ada data harga',
-                style: TextStyle(color: Colors.grey, fontSize: 14),),
+            Text(
+              'Belum ada data harga',
+              style: TextStyle(color: Colors.grey, fontSize: 14),
+            ),
           ],
         ),
       ),

@@ -43,6 +43,7 @@ dependencies:
   # PDF & Print
   pdf: ^3.10.8
   printing: ^5.12.0
+  image_picker: ^1.2.1
 
 dev_dependencies:
   flutter_test:

@@ -1,3 +1,74 @@
+// Penjelasan file:
+// Feature: analytics
+// Layer: logic
+// File: analytics_state
+// Fungsi utama: File ini mengatur alur proses, event, state, dan aturan aplikasi.
+// Doc:
+// Tujuan: Mendefinisikan state analytics, model dashboard, status pangan, metadata komoditas, dan detail luas lahan kecamatan untuk UI analitik.
+// Dipakai oleh: AnalyticsBloc, AnalyticsPage, analytics sections, dashboard chart, dan laporan analytics.
+// Dependensi utama: Response JSON dari AnalyticsRepository dan endpoint `/analytics/dashboard` serta `/analytics/status-pangan`.
+// Fungsi public/utama: KomoditasTrend, LuasLahanKecamatan, DashboardStats, ActiveAlert, StatusPanganItem, AnalyticsState variants.
+// Side effect penting: Tidak ada I/O langsung; parsing JSON menentukan data yang bisa dirender UI.
+class LuasLahanKecamatan {
+  final String kecamatanId;
+  final String kecamatanNama;
+  final double luasHa;
+
+  const LuasLahanKecamatan({
+    required this.kecamatanId,
+    required this.kecamatanNama,
+    required this.luasHa,
+  });
+
+  factory LuasLahanKecamatan.fromJson(Map<String, dynamic> json) {
+    return LuasLahanKecamatan(
+      kecamatanId: json['kecamatan_id']?.toString() ?? '',
+      kecamatanNama: json['kecamatan_nama']?.toString() ?? 'Kecamatan',
+      luasHa: (json['luas_ha'] as num?)?.toDouble() ?? 0,
+    );
+  }
+}
+
+class KomoditasTrend {
+  final String id;
+  final String nama;
+  final String gambarUrl;
+  final double avgHarga;
+  final double totalStok;
+  final double luasLahan;
+  final List<LuasLahanKecamatan> luasLahanByKecamatan;
+  final List<double> hargaHarian;
+  final List<double> stokHarian;
+
+  const KomoditasTrend({
+    required this.id,
+    required this.nama,
+    required this.gambarUrl,
+    required this.avgHarga,
+    required this.totalStok,
+    required this.luasLahan,
+    this.luasLahanByKecamatan = const [],
+    required this.hargaHarian,
+    required this.stokHarian,
+  });
+
+  factory KomoditasTrend.fromJson(Map<String, dynamic> json) {
+    return KomoditasTrend(
+      id: json['id']?.toString() ?? '',
+      nama: json['nama']?.toString() ?? 'Komoditas',
+      gambarUrl: json['gambar_url']?.toString() ?? '',
+      avgHarga: (json['avg_harga'] ?? 0).toDouble(),
+      totalStok: (json['total_stok'] ?? 0).toDouble(),
+      luasLahan: (json['luas_lahan'] ?? 0).toDouble(),
+      luasLahanByKecamatan: DashboardStats._parseLuasLahanKecamatanList(
+        json['luas_lahan_by_kecamatan'],
+      ),
+      hargaHarian: DashboardStats._parseDoubleList(json['harga_harian']),
+      stokHarian: DashboardStats._parseStokList(json['stok_harian']),
+    );
+  }
+}
+
 class DashboardStats {
   final String periode;
   final List<String> tanggalLabels;
@@ -11,18 +82,7 @@ class DashboardStats {
   final List<String> listKecamatanAman;
   final List<String> listKecamatanWaspada;
   final List<String> listKecamatanKritis;
-  final double avgHargaBeras;
-  final double avgHargaJagung;
-  final double avgHargaKedelai;
-  final double avgHargaCabai;
-  final double avgHargaGula;
-  final double avgHargaMinyak;
-  final List<double> harga7HariBeras;
-  final List<double> harga7HariJagung;
-  final List<double> harga7HariKedelai;
-  final List<double> harga7HariCabai;
-  final List<double> harga7HariGula;
-  final List<double> harga7HariMinyak;
+  final List<KomoditasTrend> komoditasTrend;
   final int distribusiAktif;
   final int laporanBulanIni;
 
@@ -39,23 +99,17 @@ class DashboardStats {
     this.listKecamatanAman = const [],
     this.listKecamatanWaspada = const [],
     this.listKecamatanKritis = const [],
-    required this.avgHargaBeras,
-    required this.avgHargaJagung,
-    required this.avgHargaKedelai,
-    required this.avgHargaCabai,
-    required this.avgHargaGula,
-    required this.avgHargaMinyak,
-    required this.harga7HariBeras,
-    required this.harga7HariJagung,
-    required this.harga7HariKedelai,
-    required this.harga7HariCabai,
-    required this.harga7HariGula,
-    required this.harga7HariMinyak,
+    required this.komoditasTrend,
     required this.distribusiAktif,
     required this.laporanBulanIni,
   });
 
   static List<double> _parseDoubleList(dynamic raw) {
+    if (raw == null) return List.filled(7, 0.0);
+    return List<double>.from((raw as List).map((e) => (e as num).toDouble()));
+  }
+
+  static List<double> _parseStokList(dynamic raw) {
     if (raw == null) return List.filled(7, 0.0);
     return List<double>.from((raw as List).map((e) => (e as num).toDouble()));
   }
@@ -76,13 +130,29 @@ class DashboardStats {
     );
   }
 
+  static List<KomoditasTrend> _parseKomoditasTrendList(dynamic raw) {
+    if (raw == null) return const [];
+    return List<KomoditasTrend>.from(
+      (raw as List)
+          .map((e) => KomoditasTrend.fromJson(e as Map<String, dynamic>)),
+    );
+  }
+
+  static List<LuasLahanKecamatan> _parseLuasLahanKecamatanList(dynamic raw) {
+    if (raw == null) return const [];
+    return List<LuasLahanKecamatan>.from(
+      (raw as List)
+          .map((e) => LuasLahanKecamatan.fromJson(e as Map<String, dynamic>)),
+    );
+  }
+
   factory DashboardStats.fromJson(Map<String, dynamic> json) {
-    final berasData = _parseDoubleList(json['harga_7hari_beras']);
     final labels = _parseStringList(json['tanggal_labels']);
+    final komTrend = _parseKomoditasTrendList(json['komoditas_trend']);
 
     return DashboardStats(
       periode: json['periode']?.toString() ?? '7d',
-      tanggalLabels: labels.isEmpty ? _fallbackLabels(berasData.length) : labels,
+      tanggalLabels: labels.isEmpty ? _fallbackLabels(7) : labels,
       activeAlerts: _parseActiveAlerts(json['active_alerts']),
       totalKomoditas: (json['total_komoditas'] as num?)?.toInt() ?? 0,
       alertCount: (json['alert_count'] as num?)?.toInt() ?? 0,
@@ -93,18 +163,7 @@ class DashboardStats {
       listKecamatanAman: _parseStringList(json['list_kecamatan_aman']),
       listKecamatanWaspada: _parseStringList(json['list_kecamatan_waspada']),
       listKecamatanKritis: _parseStringList(json['list_kecamatan_kritis']),
-      avgHargaBeras: (json['avg_harga_beras'] ?? 0).toDouble(),
-      avgHargaJagung: (json['avg_harga_jagung'] ?? 0).toDouble(),
-      avgHargaKedelai: (json['avg_harga_kedelai'] ?? 0).toDouble(),
-      avgHargaCabai: (json['avg_harga_cabai'] ?? 0).toDouble(),
-      avgHargaGula: (json['avg_harga_gula'] ?? 0).toDouble(),
-      avgHargaMinyak: (json['avg_harga_minyak'] ?? 0).toDouble(),
-      harga7HariBeras: berasData,
-      harga7HariJagung: _parseDoubleList(json['harga_7hari_jagung']),
-      harga7HariKedelai: _parseDoubleList(json['harga_7hari_kedelai']),
-      harga7HariCabai: _parseDoubleList(json['harga_7hari_cabai']),
-      harga7HariGula: _parseDoubleList(json['harga_7hari_gula']),
-      harga7HariMinyak: _parseDoubleList(json['harga_7hari_minyak']),
+      komoditasTrend: komTrend,
       distribusiAktif: (json['distribusi_aktif'] as num?)?.toInt() ?? 0,
       laporanBulanIni: (json['laporan_bulan_ini'] as num?)?.toInt() ?? 0,
     );
@@ -140,29 +199,37 @@ class ActiveAlert {
   }
 }
 
+// Base state ini menjadi induk untuk semua kondisi tampilan atau proses pada fitur ini.
 abstract class AnalyticsState {}
 
+// State ini menunjukkan kondisi 'AnalyticsInitial' pada fitur ini.
 class AnalyticsInitial extends AnalyticsState {}
 
+// State ini menunjukkan kondisi 'AnalyticsLoading' pada fitur ini.
 class AnalyticsLoading extends AnalyticsState {}
 
+// State ini menunjukkan kondisi 'AnalyticsLoaded' pada fitur ini.
 class AnalyticsLoaded extends AnalyticsState {
   final DashboardStats stats;
   AnalyticsLoaded(this.stats);
 }
 
+// State ini menunjukkan kondisi 'AnalyticsError' pada fitur ini.
 class AnalyticsError extends AnalyticsState {
   final String message;
   AnalyticsError(this.message);
 }
 
+// State ini menunjukkan kondisi 'StatusPanganLoading' pada fitur ini.
 class StatusPanganLoading extends AnalyticsState {}
 
+// State ini menunjukkan kondisi 'StatusPanganLoaded' pada fitur ini.
 class StatusPanganLoaded extends AnalyticsState {
   final List<StatusPanganItem> items;
   StatusPanganLoaded(this.items);
 }
 
+// State ini menunjukkan kondisi 'StatusPanganError' pada fitur ini.
 class StatusPanganError extends AnalyticsState {
   final String message;
   StatusPanganError(this.message);

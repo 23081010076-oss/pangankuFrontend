@@ -1,12 +1,20 @@
+// Doc:
+// Tujuan: Menjadi repository admin untuk CRUD master data, termasuk komoditas dengan metadata gambar.
+// Dipakai oleh: Halaman admin komoditas, harga, stok, kecamatan, dan luas lahan.
+// Dependensi utama: DioClient dan endpoint backend admin/master data.
+// Fungsi public/utama: fetchKomoditas, createKomoditas, updateKomoditas, deleteKomoditas, fetchKecamatan, create/update/delete modul admin lain.
+// Side effect penting: HTTP GET/POST/PUT/DELETE ke API backend; write pada master data komoditas/kecamatan/harga/stok/luas lahan.
 import 'package:dio/dio.dart';
 
 import '../../../core/network/dio_client.dart';
 
+// Repository ini menjadi jembatan antara fitur dan sumber data/backend.
 class AdminRepository {
   final DioClient _client;
 
   AdminRepository(this._client);
 
+// Method ini mengambil data dari backend lalu mengubahnya ke bentuk yang aman dipakai di aplikasi.
   Future<List<Map<String, dynamic>>> fetchKomoditas() async {
     final response = await _client.dio.get('/komoditas');
     final data = response.data;
@@ -20,10 +28,12 @@ class AdminRepository {
         .toList();
   }
 
+// Method ini mengirim request untuk menambahkan data baru ke backend.
   Future<void> createKomoditas({
     required String nama,
     required String satuan,
     required String kategori,
+    String? gambarUrl,
   }) async {
     await _client.dio.post(
       '/komoditas',
@@ -31,15 +41,18 @@ class AdminRepository {
         'nama': nama,
         'satuan': satuan,
         'kategori': kategori,
+        'gambar_url': gambarUrl,
       },
     );
   }
 
+// Method ini mengirim request untuk memperbarui data yang sudah ada di backend.
   Future<void> updateKomoditas({
     required String id,
     required String nama,
     required String satuan,
     required String kategori,
+    String? gambarUrl,
   }) async {
     await _client.dio.put(
       '/komoditas/$id',
@@ -47,14 +60,17 @@ class AdminRepository {
         'nama': nama,
         'satuan': satuan,
         'kategori': kategori,
+        'gambar_url': gambarUrl,
       },
     );
   }
 
+// Method ini menghapus data berdasarkan id atau identitas tertentu.
   Future<void> deleteKomoditas(String id) async {
     await _client.dio.delete('/komoditas/$id');
   }
 
+// Method ini mengambil data dari backend lalu mengubahnya ke bentuk yang aman dipakai di aplikasi.
   Future<List<Map<String, dynamic>>> fetchKecamatan() async {
     final response = await _client.dio.get('/kecamatan');
     final data = response.data;
@@ -68,6 +84,7 @@ class AdminRepository {
         .toList();
   }
 
+// Method ini mengirim request untuk menambahkan data baru ke backend.
   Future<void> createKecamatan({
     required String nama,
     required double lat,
@@ -85,6 +102,7 @@ class AdminRepository {
     );
   }
 
+// Method ini mengirim request untuk memperbarui data yang sudah ada di backend.
   Future<void> updateKecamatan({
     required String id,
     required String nama,
@@ -103,10 +121,12 @@ class AdminRepository {
     );
   }
 
+// Method ini menghapus data berdasarkan id atau identitas tertentu.
   Future<void> deleteKecamatan(String id) async {
     await _client.dio.delete('/kecamatan/$id');
   }
 
+// Method ini mengambil data dari backend lalu mengubahnya ke bentuk yang aman dipakai di aplikasi.
   Future<List<Map<String, dynamic>>> fetchStok({int limit = 200}) async {
     final response = await _client.dio.get(
       '/stok',
@@ -123,10 +143,51 @@ class AdminRepository {
         .toList();
   }
 
+// Method ini menyimpan data ke backend, baik sebagai data baru maupun update.
   Future<void> saveStok(Map<String, dynamic> data) async {
     await _client.dio.post('/stok', data: data);
   }
 
+// Method ini mengambil data dari backend lalu mengubahnya ke bentuk yang aman dipakai di aplikasi.
+  Future<List<Map<String, dynamic>>> fetchLuasLahan({
+    int page = 1,
+    int limit = 200,
+    String? komoditasId,
+    String? kecamatanId,
+    int? tahun,
+  }) async {
+    final response = await _client.dio.get(
+      '/luas-lahan',
+      queryParameters: {
+        'page': page,
+        'limit': limit,
+        if (komoditasId != null) 'komoditas_id': komoditasId,
+        if (kecamatanId != null) 'kecamatan_id': kecamatanId,
+        if (tahun != null) 'tahun': tahun,
+      },
+    );
+    final data = response.data;
+    final list = (data is Map ? (data['data'] ?? []) : data);
+    if (list is! List) {
+      return [];
+    }
+    return list
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+  }
+
+// Method ini menyimpan data ke backend, baik sebagai data baru maupun update.
+  Future<void> saveLuasLahan(Map<String, dynamic> data) async {
+    await _client.dio.post('/luas-lahan', data: data);
+  }
+
+// Method ini menghapus data berdasarkan id atau identitas tertentu.
+  Future<void> deleteLuasLahan(String id) async {
+    await _client.dio.delete('/luas-lahan/$id');
+  }
+
+// Method ini mengambil data dari backend lalu mengubahnya ke bentuk yang aman dipakai di aplikasi.
   Future<Map<String, dynamic>> fetchHargaPage({
     required int page,
     required int limit,
@@ -152,10 +213,12 @@ class AdminRepository {
     return {'items': items, 'total': total};
   }
 
+// Method ini mengirim request untuk menambahkan data baru ke backend.
   Future<void> createHarga(Map<String, dynamic> data) async {
     await _client.dio.post('/harga', data: data);
   }
 
+// Method ini mengambil data dari backend lalu mengubahnya ke bentuk yang aman dipakai di aplikasi.
   Future<Map<String, dynamic>> fetchUsers({
     required int page,
     required int limit,
@@ -177,8 +240,28 @@ class AdminRepository {
     };
   }
 
-  Future<void> updateUserRole({required String id, required String role}) async {
+// Method ini mengirim request untuk memperbarui data yang sudah ada di backend.
+  Future<void> updateUserRole({
+    required String id,
+    required String role,
+  }) async {
     await _client.dio.put('/users/$id/role', data: {'role': role});
+  }
+
+// Method ini mengunggah file foto ke backend dan mengembalikan URL gambar.
+  Future<String> uploadFoto(String filePath) async {
+    final fileName = filePath.split('/').last;
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(filePath, filename: fileName),
+    });
+
+    final response = await _client.dio.post(
+      '/upload/foto',
+      data: formData,
+    );
+
+    final data = response.data as Map<String, dynamic>;
+    return data['url'] as String;
   }
 
   String getErrorMessage(DioException e, {required String fallback}) {

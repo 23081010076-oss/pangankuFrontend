@@ -1,12 +1,19 @@
+// Penjelasan file:
+// Feature: analytics
+// Layer: api
+// File: analytics_repository
+// Fungsi utama: File ini mengatur komunikasi data dengan backend atau sumber data aplikasi.
 import 'package:dio/dio.dart';
 
 import '../../../core/network/dio_client.dart';
 
+// Repository ini menjadi jembatan antara fitur dan sumber data/backend.
 class AnalyticsRepository {
   final DioClient _client;
 
   AnalyticsRepository(this._client);
 
+// Method ini mengambil data dari backend lalu mengubahnya ke bentuk yang aman dipakai di aplikasi.
   Future<Map<String, dynamic>> fetchDashboardStats({
     required String periode,
   }) async {
@@ -21,6 +28,7 @@ class AnalyticsRepository {
     return {};
   }
 
+// Method ini mengambil data dari backend lalu mengubahnya ke bentuk yang aman dipakai di aplikasi.
   Future<List<Map<String, dynamic>>> fetchStatusPangan() async {
     final response = await _client.dio.get('/analytics/status-pangan');
     final data = response.data;

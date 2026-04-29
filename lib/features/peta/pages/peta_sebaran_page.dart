@@ -1,7 +1,14 @@
+// Penjelasan file:
+// Feature: peta
+// Layer: ui
+// File: peta_sebaran_page
+// Fungsi utama: File ini mengatur tampilan halaman, komponen visual, dan interaksi pengguna.
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import '../../../core/widgets/last_updated_badge.dart';
+import '../../../core/widgets/live_refresh.dart';
 import '../../analytics/bloc/analytics_bloc.dart';
 import '../../analytics/bloc/analytics_event.dart';
 import '../../analytics/bloc/analytics_state.dart';
@@ -13,9 +20,8 @@ class PetaSebaranPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) =>
-          AnalyticsBloc(context.read<AnalyticsRepository>())
-            ..add(LoadStatusPangan()),
+      create: (context) => AnalyticsBloc(context.read<AnalyticsRepository>())
+        ..add(LoadStatusPangan()),
       child: const _PetaSebaranView(),
     );
   }
@@ -32,6 +38,7 @@ class _PetaSebaranViewState extends State<_PetaSebaranView> {
   StatusPanganItem? _selected;
   String _selectedLayer = 'stok';
   final _mapController = MapController();
+  DateTime? _lastUpdatedAt;
 
   @override
   void dispose() {
@@ -67,77 +74,97 @@ class _PetaSebaranViewState extends State<_PetaSebaranView> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
-      body: Column(
-        children: [
-          _buildHeader(context),
-          Expanded(
-            flex: 5,
-            child: BlocBuilder<AnalyticsBloc, AnalyticsState>(
-              builder: (_, state) {
-                if (state is StatusPanganLoading) {
-                  return const Center(
-                    child: CircularProgressIndicator(color: Color(0xFF006064)),
-                  );
-                }
-                if (state is StatusPanganError) {
-                  return Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.signal_wifi_off_outlined,
-                            size: 48, color: Colors.grey,),
-                        const SizedBox(height: 12),
-                        Text(state.message,
-                            style: const TextStyle(color: Colors.grey),),
-                        const SizedBox(height: 12),
-                        TextButton(
-                          onPressed: () => context
-                              .read<AnalyticsBloc>()
-                              .add(LoadStatusPangan()),
-                          child: const Text('Coba Lagi'),
+    return LiveRefresh(
+      interval: const Duration(seconds: 30),
+      onRefresh: () async {
+        context.read<AnalyticsBloc>().add(LoadStatusPangan());
+      },
+      child: BlocListener<AnalyticsBloc, AnalyticsState>(
+        listener: (_, state) {
+          if (state is StatusPanganLoaded) {
+            setState(() => _lastUpdatedAt = DateTime.now());
+          }
+        },
+        child: Scaffold(
+          backgroundColor: const Color(0xFFF5F7FA),
+          body: Column(
+            children: [
+              _buildHeader(context),
+              Expanded(
+                flex: 5,
+                child: BlocBuilder<AnalyticsBloc, AnalyticsState>(
+                  builder: (_, state) {
+                    if (state is StatusPanganLoading) {
+                      return const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF006064),
                         ),
-                      ],
-                    ),
-                  );
-                }
-                final items = state is StatusPanganLoaded
-                    ? state.items
-                    : <StatusPanganItem>[];
-                return _buildMap(items);
-              },
-            ),
+                      );
+                    }
+                    if (state is StatusPanganError) {
+                      return Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.signal_wifi_off_outlined,
+                              size: 48,
+                              color: Colors.grey,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              state.message,
+                              style: const TextStyle(color: Colors.grey),
+                            ),
+                            const SizedBox(height: 12),
+                            TextButton(
+                              onPressed: () => context
+                                  .read<AnalyticsBloc>()
+                                  .add(LoadStatusPangan()),
+                              child: const Text('Coba Lagi'),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                    final items = state is StatusPanganLoaded
+                        ? state.items
+                        : <StatusPanganItem>[];
+                    return _buildMap(items);
+                  },
+                ),
+              ),
+              BlocBuilder<AnalyticsBloc, AnalyticsState>(
+                builder: (_, state) {
+                  final items = state is StatusPanganLoaded
+                      ? state.items
+                      : <StatusPanganItem>[];
+                  return _buildStatusPills(items);
+                },
+              ),
+              Expanded(
+                flex: 3,
+                child: BlocBuilder<AnalyticsBloc, AnalyticsState>(
+                  builder: (_, state) {
+                    final items = state is StatusPanganLoaded
+                        ? state.items
+                        : <StatusPanganItem>[];
+                    final sorted = [...items]..sort((a, b) {
+                        const order = {
+                          'kritis': 0,
+                          'waspada': 1,
+                          'aman': 2,
+                        };
+                        return (order[a.statusStok] ?? 9)
+                            .compareTo(order[b.statusStok] ?? 9);
+                      });
+                    return _buildList(sorted);
+                  },
+                ),
+              ),
+            ],
           ),
-          BlocBuilder<AnalyticsBloc, AnalyticsState>(
-            builder: (_, state) {
-              final items = state is StatusPanganLoaded
-                  ? state.items
-                  : <StatusPanganItem>[];
-              return _buildStatusPills(items);
-            },
-          ),
-          Expanded(
-            flex: 3,
-            child: BlocBuilder<AnalyticsBloc, AnalyticsState>(
-              builder: (_, state) {
-                final items = state is StatusPanganLoaded
-                    ? state.items
-                    : <StatusPanganItem>[];
-                final sorted = [...items]..sort((a, b) {
-                    const order = {
-                      'kritis': 0,
-                      'waspada': 1,
-                      'aman': 2,
-                    };
-                    return (order[a.statusStok] ?? 9)
-                        .compareTo(order[b.statusStok] ?? 9);
-                  });
-                return _buildList(sorted);
-              },
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -158,96 +185,164 @@ class _PetaSebaranViewState extends State<_PetaSebaranView> {
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              GestureDetector(
-                onTap: () => Navigator.of(context).maybePop(),
-                child: Container(
-                  padding: const EdgeInsets.all(7),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(10),
+              Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).maybePop(),
+                    child: Container(
+                      padding: const EdgeInsets.all(7),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.arrow_back,
+                        size: 16,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
-                  child:
-                      const Icon(Icons.arrow_back, size: 16, color: Colors.white),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.map_outlined,
-                    color: Colors.white, size: 20,),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Peta Sebaran',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),),
-                    Text('Kabupaten Lamongan',
-                        style:
-                            TextStyle(color: Colors.white70, fontSize: 10),),
-                  ],
-                ),
-              ),
-              GestureDetector(
-                onTap: () => setState(() {
-                  _selectedLayer =
-                      _selectedLayer == 'stok' ? 'harga' : 'stok';
-                }),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.4), width: 1,),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.map_outlined,
+                      color: Colors.white,
+                      size: 20,
+                    ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.layers_outlined,
-                          size: 14, color: Colors.white,),
-                      const SizedBox(width: 4),
-                      Text(
-                        _selectedLayer == 'stok' ? 'Layer: Stok' : 'Layer: Harga',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Peta Sebaran',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          'Kabupaten Lamongan',
+                          style: TextStyle(color: Colors.white70, fontSize: 10),
+                        ),
+                      ],
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => setState(() {
+                      _selectedLayer =
+                          _selectedLayer == 'stok' ? 'harga' : 'stok';
+                    }),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.4),
+                          width: 1,
                         ),
                       ),
-                    ],
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.layers_outlined,
+                            size: 14,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _selectedLayer == 'stok'
+                                ? 'Layer: Stok'
+                                : 'Layer: Harga',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () =>
+                        context.read<AnalyticsBloc>().add(LoadStatusPangan()),
+                    child: Container(
+                      padding: const EdgeInsets.all(7),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.refresh,
+                        size: 16,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: () =>
-                    context.read<AnalyticsBloc>().add(LoadStatusPangan()),
-                child: Container(
-                  padding: const EdgeInsets.all(7),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(10),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  LastUpdatedBadge(
+                    timestamp: _lastUpdatedAt,
+                    backgroundColor: Colors.white.withValues(alpha: 0.16),
+                    foregroundColor: Colors.white,
                   ),
-                  child: const Icon(Icons.refresh,
-                      size: 16, color: Colors.white,),
-                ),
+                  _headerPill(
+                    _selectedLayer == 'stok' ? 'Mode stok' : 'Mode harga',
+                    Icons.insights_outlined,
+                  ),
+                ],
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _headerPill(String label, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 14),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -280,8 +375,7 @@ class _PetaSebaranViewState extends State<_PetaSebaranView> {
               ),
               children: [
                 TileLayer(
-                  urlTemplate:
-                      'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                   userAgentPackageName: 'com.example.panganku_mobile',
                   maxZoom: 19,
                 ),
@@ -303,7 +397,9 @@ class _PetaSebaranViewState extends State<_PetaSebaranView> {
                           children: [
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 3,),
+                                horizontal: 6,
+                                vertical: 3,
+                              ),
                               decoration: BoxDecoration(
                                 color: isSelected
                                     ? Colors.white
@@ -338,7 +434,9 @@ class _PetaSebaranViewState extends State<_PetaSebaranView> {
                                 color: color,
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                    color: Colors.white, width: 1.5,),
+                                  color: Colors.white,
+                                  width: 1.5,
+                                ),
                               ),
                             ),
                           ],
@@ -405,19 +503,22 @@ class _PetaSebaranViewState extends State<_PetaSebaranView> {
                   spacing: 6,
                   children: [
                     _InfoChip(
-                        label: 'Stok: ${item.stokPersen.toStringAsFixed(0)}%',
-                        color: color,),
+                      label: 'Stok: ${item.stokPersen.toStringAsFixed(0)}%',
+                      color: color,
+                    ),
                     _InfoChip(
-                        label: 'Harga: ${item.hargaTrend}',
-                        color: item.hargaTrend == 'NAIK'
-                            ? const Color(0xFFC62828)
-                            : item.hargaTrend == 'TURUN'
-                                ? const Color(0xFF2E7D32)
-                                : Colors.blueGrey,),
+                      label: 'Harga: ${item.hargaTrend}',
+                      color: item.hargaTrend == 'NAIK'
+                          ? const Color(0xFFC62828)
+                          : item.hargaTrend == 'TURUN'
+                              ? const Color(0xFF2E7D32)
+                              : Colors.blueGrey,
+                    ),
                     if (item.jumlahLaporanAktif > 0)
                       _InfoChip(
-                          label: '${item.jumlahLaporanAktif} laporan',
-                          color: const Color(0xFFF57C00),),
+                        label: '${item.jumlahLaporanAktif} laporan',
+                        color: const Color(0xFFF57C00),
+                      ),
                   ],
                 ),
               ],
@@ -480,8 +581,10 @@ class _PetaSebaranViewState extends State<_PetaSebaranView> {
   Widget _buildList(List<StatusPanganItem> items) {
     if (items.isEmpty) {
       return Center(
-        child: Text('Belum ada data kecamatan',
-            style: TextStyle(color: Colors.grey[400]),),
+        child: Text(
+          'Belum ada data kecamatan',
+          style: TextStyle(color: Colors.grey[400]),
+        ),
       );
     }
     return Container(
@@ -520,8 +623,7 @@ class _PetaSebaranViewState extends State<_PetaSebaranView> {
               itemBuilder: (context, i) {
                 final k = items[i];
                 final color = _statusColor(k.statusStok);
-                final isSelected =
-                    _selected?.kecamatanId == k.kecamatanId;
+                final isSelected = _selected?.kecamatanId == k.kecamatanId;
                 return GestureDetector(
                   onTap: () {
                     setState(() {
@@ -561,12 +663,15 @@ class _PetaSebaranViewState extends State<_PetaSebaranView> {
                           _selectedLayer == 'stok'
                               ? 'Stok: ${k.stokPersen.toStringAsFixed(0)}%'
                               : 'Harga: ${k.hargaTrend}',
-                          style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                          style:
+                              TextStyle(fontSize: 11, color: Colors.grey[600]),
                         ),
                         const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2,),
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: color.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
@@ -609,7 +714,10 @@ class _InfoChip extends StatelessWidget {
       child: Text(
         label,
         style: TextStyle(
-            fontSize: 9, fontWeight: FontWeight.w600, color: color,),
+          fontSize: 9,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
       ),
     );
   }
@@ -620,11 +728,12 @@ class _StatusPill extends StatelessWidget {
   final int count;
   final Color color;
   final Color bg;
-  const _StatusPill(
-      {required this.label,
-      required this.count,
-      required this.color,
-      required this.bg,});
+  const _StatusPill({
+    required this.label,
+    required this.count,
+    required this.color,
+    required this.bg,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -638,16 +747,18 @@ class _StatusPill extends StatelessWidget {
             Text(
               '$count',
               style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: color,),
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: color,
+              ),
             ),
             Text(
               label,
               style: TextStyle(
-                  fontSize: 9,
-                  color: color,
-                  fontWeight: FontWeight.w600,),
+                fontSize: 9,
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),

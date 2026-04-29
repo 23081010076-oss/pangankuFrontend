@@ -1,9 +1,15 @@
+// Penjelasan file:
+// Feature: profile
+// Layer: logic
+// File: profile_bloc
+// Fungsi utama: File ini mengatur alur proses, event, state, dan aturan aplikasi.
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:dio/dio.dart';
 import '../data/profile_repository.dart';
 import 'profile_event.dart';
 import 'profile_state.dart';
 
+// Bloc ini menerima event dari UI, menjalankan proses, lalu mengeluarkan state baru.
 class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   final ProfileRepository _repository;
 
@@ -13,8 +19,11 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     on<ChangePassword>(_onChangePassword);
   }
 
+// Handler ini dijalankan saat event tertentu diterima oleh bloc.
   Future<void> _onLoadProfile(
-      LoadProfile event, Emitter<ProfileState> emit,) async {
+    LoadProfile event,
+    Emitter<ProfileState> emit,
+  ) async {
     emit(ProfileLoading());
     try {
       final data = await _repository.fetchProfile();
@@ -34,8 +43,11 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     }
   }
 
+// Handler ini dijalankan saat event tertentu diterima oleh bloc.
   Future<void> _onUpdateProfile(
-      UpdateProfile event, Emitter<ProfileState> emit,) async {
+    UpdateProfile event,
+    Emitter<ProfileState> emit,
+  ) async {
     final current = _currentProfile();
     if (current == null) return;
     emit(ProfileSaving(current));
@@ -46,9 +58,10 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         kecamatanId: event.kecamatanId,
       );
       final updated = current.copyWith(
-          name: event.name,
-          phone: event.phone,
-          kecamatanId: event.kecamatanId,);
+        name: event.name,
+        phone: event.phone,
+        kecamatanId: event.kecamatanId,
+      );
       emit(ProfileSaved(updated, 'Profil berhasil diperbarui'));
     } on DioException catch (e) {
       emit(
@@ -63,8 +76,11 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     }
   }
 
+// Handler ini dijalankan saat event tertentu diterima oleh bloc.
   Future<void> _onChangePassword(
-      ChangePassword event, Emitter<ProfileState> emit,) async {
+    ChangePassword event,
+    Emitter<ProfileState> emit,
+  ) async {
     final current = _currentProfile();
     if (current == null) return;
     emit(ProfileSaving(current));

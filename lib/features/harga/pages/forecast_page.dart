@@ -1,9 +1,21 @@
+// Doc:
+// Tujuan: Menjadi shell halaman forecast harga dan mengelola state filter serta hasil prediksi.
+// Dipakai oleh: Router/navigasi fitur harga menuju ForecastPage.
+// Dependensi utama: HargaRepository, DioException, intl NumberFormat, part UI forecast.
+// Fungsi public/utama: ForecastPage, _ForecastPageState lifecycle, _loadMeta, _loadForecast.
+// Side effect penting: HTTP call via HargaRepository, baca metadata komoditas/kecamatan, dan tampilkan snackbar error input.
+import 'dart:math' as math;
+
 import 'package:dio/dio.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+
 import '../data/harga_repository.dart';
+
+part 'forecast_filters_section.dart';
+part 'forecast_result_section.dart';
 
 class ForecastPage extends StatefulWidget {
   const ForecastPage({super.key});
@@ -26,9 +38,50 @@ class _ForecastPageState extends State<ForecastPage> {
   bool _loadingForecast = false;
   String? _error;
 
-  // Forecast result
   List<double> _predictions = [];
   String _trend = '';
+
+  String get _selectedKomoditasName {
+    for (final item in _komoditasList) {
+      if (item['id'] == _selectedKomoditasId) {
+        return item['nama']?.toString() ?? 'Komoditas';
+      }
+    }
+    return 'Komoditas';
+  }
+
+  String get _selectedKecamatanName {
+    if (_selectedKecamatanId == null) {
+      return 'Semua kecamatan';
+    }
+    for (final item in _kecamatanList) {
+      if (item['id'] == _selectedKecamatanId) {
+        return item['nama']?.toString() ?? 'Semua kecamatan';
+      }
+    }
+    return 'Semua kecamatan';
+  }
+
+  double? get _changePercent {
+    if (_predictions.length < 2 || _predictions.first <= 0) {
+      return null;
+    }
+    return ((_predictions.last - _predictions.first) / _predictions.first) *
+        100;
+  }
+
+  double get _avgPrediction {
+    if (_predictions.isEmpty) {
+      return 0;
+    }
+    return _predictions.reduce((a, b) => a + b) / _predictions.length;
+  }
+
+  double get _minPrediction =>
+      _predictions.isEmpty ? 0 : _predictions.reduce(math.min);
+
+  double get _maxPrediction =>
+      _predictions.isEmpty ? 0 : _predictions.reduce(math.max);
 
   @override
   void initState() {
@@ -50,7 +103,7 @@ class _ForecastPageState extends State<ForecastPage> {
         _kecamatanList = results[1];
         _loadingMeta = false;
       });
-    } catch (e) {
+    } catch (_) {
       setState(() {
         _error = 'Gagal memuat data';
         _loadingMeta = false;
@@ -85,7 +138,6 @@ class _ForecastPageState extends State<ForecastPage> {
           (data['predictions'] as List).map((v) => (v as num).toDouble()),
         );
         _trend = data['trend'] as String? ?? '';
-
         _loadingForecast = false;
       });
     } on DioException catch (e) {
@@ -114,9 +166,10 @@ class _ForecastPageState extends State<ForecastPage> {
               title: const Text(
                 'Prediksi Harga',
                 style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,),
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               background: Container(
                 decoration: const BoxDecoration(
@@ -138,567 +191,48 @@ class _ForecastPageState extends State<ForecastPage> {
           if (_loadingMeta)
             const SliverFillRemaining(
               child: Center(
-                  child: CircularProgressIndicator(color: Color(0xFF2E7D32)),),
+                child: CircularProgressIndicator(color: Color(0xFF2E7D32)),
+              ),
             )
           else
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildFilterCard(),
-                    const SizedBox(height: 20),
-                    if (_loadingForecast)
-                      const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(48),
-                          child: CircularProgressIndicator(
-                              color: Color(0xFF2E7D32),),
-                        ),
-                      )
-                    else if (_error != null)
-                      _buildErrorCard()
-                    else if (_predictions.isNotEmpty) ...[
-                      _buildTrendBadge(),
-                      const SizedBox(height: 16),
-                      _buildChart(),
-                      const SizedBox(height: 16),
-                      _buildPredictionTable(),
-                    ] else
-                      _buildEmptyState(),
-                    const SizedBox(height: 24),
-                  ],
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1180),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isWide = constraints.maxWidth >= 980;
 
-  Widget _buildFilterCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Filter Prediksi',
-            style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF1B5E20),),
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            initialValue: _selectedKomoditasId,
-            decoration: InputDecoration(
-              labelText: 'Komoditas *',
-              prefixIcon: const Icon(Icons.inventory_2_outlined,
-                  color: Color(0xFF2E7D32),),
-              border:
-                  OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-              focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide:
-                      const BorderSide(color: Color(0xFF2E7D32), width: 2),),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            ),
-            hint: const Text('Pilih komoditas'),
-            items: _komoditasList
-                .map((k) => DropdownMenuItem<String>(
-                      value: k['id'] as String,
-                      child: Text(k['nama'] as String? ?? ''),
-                    ),)
-                .toList(),
-            onChanged: (v) {
-              setState(() {
-                _selectedKomoditasId = v;
-                _predictions = [];
-                _error = null;
-              });
-            },
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            initialValue: _selectedKecamatanId,
-            decoration: InputDecoration(
-              labelText: 'Kecamatan (opsional)',
-              prefixIcon: const Icon(Icons.location_on_outlined,
-                  color: Color(0xFF2E7D32),),
-              border:
-                  OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-              focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide:
-                      const BorderSide(color: Color(0xFF2E7D32), width: 2),),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            ),
-            hint: const Text('Semua kecamatan'),
-            items: [
-              const DropdownMenuItem<String>(
-                value: null,
-                child: Text('Semua kecamatan'),
-              ),
-              ..._kecamatanList.map((k) => DropdownMenuItem<String>(
-                    value: k['id'] as String,
-                    child: Text(k['nama'] as String? ?? ''),
-                  ),),
-            ],
-            onChanged: (v) {
-              setState(() {
-                _selectedKecamatanId = v;
-                _predictions = [];
-                _error = null;
-              });
-            },
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            height: 46,
-            child: ElevatedButton.icon(
-              onPressed: _loadingForecast ? null : _loadForecast,
-              icon: const Icon(Icons.auto_graph, size: 18),
-              label: const Text('Lihat Prediksi'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF2E7D32),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTrendBadge() {
-    final isNaik = _trend == 'NAIK';
-    final isTurun = _trend == 'TURUN';
-    final color = isNaik
-        ? Colors.red[700]!
-        : isTurun
-            ? const Color(0xFF2E7D32)
-            : Colors.orange[700]!;
-    final icon = isNaik
-        ? Icons.trending_up
-        : isTurun
-            ? Icons.trending_down
-            : Icons.trending_flat;
-    final label = isNaik
-        ? 'Tren Naik'
-        : isTurun
-            ? 'Tren Turun'
-            : 'Stabil';
-
-    double? pctChange;
-    if (_predictions.length >= 2 && _predictions.first > 0) {
-      pctChange = ((_predictions.last - _predictions.first) / _predictions.first) * 100;
-    }
-
-    return Row(
-      children: [
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: color.withValues(alpha: 0.3)),
-            ),
-            child: Row(
-              children: [
-                Icon(icon, color: color, size: 24),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Prediksi 7 Hari',
-                          style:
-                              TextStyle(fontSize: 11, color: Colors.grey[600]),),
-                      Text(
-                        label,
-                        style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: color,),
-                      ),
-                    ],
-                  ),
-                ),
-                if (pctChange != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      '${pctChange > 0 ? '+' : ''}${pctChange.toStringAsFixed(1)}%',
-                      style: TextStyle(
-                        color: color,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildChart() {
-    final spots = _predictions.asMap().entries.map((e) {
-      return FlSpot(e.key.toDouble(), e.value);
-    }).toList();
-
-    final minY = _predictions.reduce((a, b) => a < b ? a : b) * 0.97;
-    final maxY = _predictions.reduce((a, b) => a > b ? a : b) * 1.03;
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(8, 16, 16, 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 0, 0, 12),
-            child: Text(
-              'Grafik Prediksi 7 Hari ke Depan',
-              style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey[700],),
-            ),
-          ),
-          SizedBox(
-            height: 200,
-            child: LineChart(
-              LineChartData(
-                minY: minY,
-                maxY: maxY,
-                gridData: FlGridData(
-                  show: true,
-                  getDrawingHorizontalLine: (_) => FlLine(
-                    color: Colors.grey.withValues(alpha: 0.15),
-                    strokeWidth: 1,
-                    dashArray: [4, 4],
-                  ),
-                  drawVerticalLine: true,
-                  getDrawingVerticalLine: (_) => FlLine(
-                    color: Colors.grey.withValues(alpha: 0.15),
-                    strokeWidth: 1,
-                    dashArray: [4, 4],
-                  ),
-                ),
-                borderData: FlBorderData(show: false),
-                titlesData: FlTitlesData(
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 42,
-                      getTitlesWidget: (value, meta) {
-                        if (value == meta.max || value == meta.min) {
-                          return const SizedBox.shrink();
-                        }
-                        return Text(
-                          '${(value / 1000).toStringAsFixed(0)}rb',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: Colors.grey[500],
-                            fontWeight: FontWeight.w500,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      interval: 1,
-                      getTitlesWidget: (value, meta) {
-                        final day = DateTime.now()
-                            .add(Duration(days: value.toInt() + 1));
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Text(
-                            DateFormat('dd/MM').format(day),
-                            style: TextStyle(
-                                fontSize: 10, color: Colors.grey[500],),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),),
-                  rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),),
-                ),
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: spots,
-                    isCurved: true,
-                    preventCurveOverShooting: true,
-                    color: const Color(0xFF2E7D32),
-                    barWidth: 3,
-                    isStrokeCapRound: true,
-                    shadow: BoxShadow(
-                      color: const Color(0xFF2E7D32).withValues(alpha: 0.3),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                    dotData: FlDotData(
-                      show: true,
-                      getDotPainter: (spot, _, __, index) {
-                        return FlDotCirclePainter(
-                          radius: 3.5,
-                          color: Colors.white,
-                          strokeWidth: 2,
-                          strokeColor: const Color(0xFF2E7D32),
-                        );
-                      },
-                    ),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          const Color(0xFF2E7D32).withValues(alpha: 0.35),
-                          const Color(0xFF2E7D32).withValues(alpha: 0.0),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-                lineTouchData: LineTouchData(
-                  handleBuiltInTouches: true,
-                  touchTooltipData: LineTouchTooltipData(
-                    getTooltipColor: (_) =>
-                        const Color(0xFF1E293B).withValues(alpha: 0.9),
-                    tooltipRoundedRadius: 8,
-                    fitInsideHorizontally: true,
-                    tooltipBorder:
-                        const BorderSide(color: Colors.white24, width: 1),
-                    getTooltipItems: (touchedSpots) {
-                      return touchedSpots.map((spot) {
-                        final day = DateTime.now()
-                            .add(Duration(days: spot.spotIndex + 1));
-                        return LineTooltipItem(
-                          '${DateFormat('dd/MM').format(day)}\n',
-                          const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          children: [
-                            TextSpan(
-                              text: 'Rp ${_currencyFmt.format(spot.y)}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
+                        if (isWide) {
+                          return Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(
+                                width: 340,
+                                child: _buildFilterCard(isWide: true),
                               ),
-                            ),
+                              const SizedBox(width: 20),
+                              Expanded(child: _buildContent()),
+                            ],
+                          );
+                        }
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildFilterCard(isWide: false),
+                            const SizedBox(height: 20),
+                            _buildContent(),
                           ],
                         );
-                      }).toList();
-                    },
+                      },
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPredictionTable() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-            child: Row(
-              children: [
-                const Icon(Icons.table_rows_outlined,
-                    size: 16, color: Color(0xFF2E7D32),),
-                const SizedBox(width: 6),
-                Text(
-                  'Rincian Prediksi',
-                  style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.grey[700],),
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          // Header
-          Container(
-            color: const Color(0xFFE8F5E9),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: const Row(
-              children: [
-                Expanded(
-                    flex: 3,
-                    child: Text('Tanggal',
-                        style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF1B5E20),),),),
-                Expanded(
-                    flex: 3,
-                    child: Text('Prediksi Harga',
-                        style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF1B5E20),),
-                        textAlign: TextAlign.right,),),
-                Expanded(
-                    flex: 2,
-                    child: Text('Status',
-                        style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF1B5E20),),
-                        textAlign: TextAlign.center,),),
-              ],
-            ),
-          ),
-          ...List.generate(_predictions.length, (i) {
-            final day = DateTime.now().add(Duration(days: i + 1));
-
-            return Column(
-              children: [
-                Container(
-                  color: Colors.transparent,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        flex: 3,
-                        child: Text(
-                          DateFormat('EEE, dd MMM', 'id').format(day),
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                      ),
-                      Expanded(
-                        flex: 3,
-                        child: Text(
-                          'Rp ${_currencyFmt.format(_predictions[i])}',
-                          style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF1B5E20),),
-                          textAlign: TextAlign.right,
-                        ),
-                      ),
-                      const Expanded(
-                        flex: 2,
-                        child: Center(
-                          child: Icon(Icons.check_circle, size: 16, color: Color(0xFF4CAF50)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (i < _predictions.length - 1)
-                  const Divider(
-                      height: 1, indent: 16, color: Color(0xFFF0F0F0),),
-              ],
-            );
-          }),
-          const SizedBox(height: 8),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildErrorCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.red.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
-      ),
-      child: Column(
-        children: [
-          const Icon(Icons.error_outline, color: Colors.red, size: 36),
-          const SizedBox(height: 8),
-          Text(
-            _error ?? 'Terjadi kesalahan',
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.red, fontSize: 13),
-          ),
-          const SizedBox(height: 12),
-          if (_error?.contains('historis tidak cukup') ?? false)
-            Text(
-              'Backend membutuhkan minimal 7 hari data historis untuk komoditas & kecamatan yang dipilih.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 48),
-      child: Column(
-        children: [
-          Icon(Icons.auto_graph, size: 64, color: Colors.grey[300]),
-          const SizedBox(height: 12),
-          Text(
-            'Pilih komoditas lalu tekan\n"Lihat Prediksi"',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13, color: Colors.grey[500]),
-          ),
         ],
       ),
     );

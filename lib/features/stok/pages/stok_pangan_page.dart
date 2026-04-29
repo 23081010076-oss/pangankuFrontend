@@ -1,3 +1,8 @@
+// Penjelasan file:
+// Feature: stok
+// Layer: ui
+// File: stok_pangan_page
+// Fungsi utama: File ini mengatur tampilan halaman, komponen visual, dan interaksi pengguna.
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -7,6 +12,8 @@ import '../bloc/stok_state.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_state.dart';
 import '../../../core/repositories/master_data_repository.dart';
+import '../../../core/widgets/live_refresh.dart';
+import '../../../core/widgets/last_updated_badge.dart';
 
 class StokPanganPage extends StatefulWidget {
   const StokPanganPage({super.key});
@@ -17,6 +24,7 @@ class StokPanganPage extends StatefulWidget {
 
 class _StokPanganPageState extends State<StokPanganPage> {
   String _selectedStatus = 'semua';
+  DateTime? _lastUpdatedAt;
 
   static const _statusFilters = ['semua', 'aman', 'waspada', 'kritis'];
 
@@ -36,6 +44,8 @@ class _StokPanganPageState extends State<StokPanganPage> {
             ),
           );
           ctx.read<StokBloc>().add(LoadStokList());
+        } else if (state is StokLoaded) {
+          setState(() => _lastUpdatedAt = DateTime.now());
         } else if (state is StokError) {
           ScaffoldMessenger.of(ctx).showSnackBar(
             SnackBar(
@@ -46,37 +56,55 @@ class _StokPanganPageState extends State<StokPanganPage> {
         }
       },
       builder: (context, state) {
-        return Scaffold(
-          backgroundColor: const Color(0xFFF5F7FA),
-          floatingActionButton: canEdit
-              ? FloatingActionButton.extended(
-                  onPressed: () => _showUpsertForm(context),
-                  label: const Text('Update Stok'),
-                  icon: const Icon(Icons.add),
-                  backgroundColor: const Color(0xFF2E7D32),
-                  foregroundColor: Colors.white,
-                )
-              : null,
-          body: RefreshIndicator(
-            color: const Color(0xFF2E7D32),
-            onRefresh: () async => context.read<StokBloc>().add(RefreshStok()),
-            child: CustomScrollView(
-              slivers: [
-                _buildHeader(state),
-                SliverToBoxAdapter(child: _buildFilters()),
-                if (state is StokLoading)
-                  const SliverFillRemaining(
-                    child: Center(
-                        child: CircularProgressIndicator(
-                            color: Color(0xFF2E7D32),),),
+        return LiveRefresh(
+          interval: const Duration(seconds: 30),
+          onRefresh: () async {
+            context.read<StokBloc>().add(RefreshStok());
+          },
+          child: Scaffold(
+            backgroundColor: const Color(0xFFF5F7FA),
+            floatingActionButton: canEdit
+                ? FloatingActionButton.extended(
+                    onPressed: () => _showUpsertForm(context),
+                    label: const Text('Update Stok'),
+                    icon: const Icon(Icons.add),
+                    backgroundColor: const Color(0xFF2E7D32),
+                    foregroundColor: Colors.white,
                   )
-                else if (state is StokError)
-                  SliverFillRemaining(child: _buildError((state).message))
-                else if (state is StokLoaded)
-                  _buildList(state, canEdit)
-                else
-                  const SliverFillRemaining(child: SizedBox()),
-              ],
+                : null,
+            body: RefreshIndicator(
+              color: const Color(0xFF2E7D32),
+              onRefresh: () async =>
+                  context.read<StokBloc>().add(RefreshStok()),
+              child: CustomScrollView(
+                slivers: [
+                  _buildHeader(state),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: LastUpdatedBadge(timestamp: _lastUpdatedAt),
+                      ),
+                    ),
+                  ),
+                  SliverToBoxAdapter(child: _buildFilters()),
+                  if (state is StokLoading)
+                    const SliverFillRemaining(
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF2E7D32),
+                        ),
+                      ),
+                    )
+                  else if (state is StokError)
+                    SliverFillRemaining(child: _buildError((state).message))
+                  else if (state is StokLoaded)
+                    _buildList(state, canEdit)
+                  else
+                    const SliverFillRemaining(child: SizedBox()),
+                ],
+              ),
             ),
           ),
         );
@@ -126,32 +154,54 @@ class _StokPanganPageState extends State<StokPanganPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Stok Pangan',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,),),
-                          Text('Kondisi per kecamatan',
-                              style: TextStyle(
-                                  color: Colors.white70, fontSize: 12,),),
+                          Text(
+                            'Stok Pangan',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          Text(
+                            'Kondisi per kecamatan',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
                         ],
                       ),
                     ),
-                    Icon(Icons.inventory_2_outlined,
-                        color: Colors.white.withValues(alpha: 0.8), size: 28,),
+                    Icon(
+                      Icons.inventory_2_outlined,
+                      color: Colors.white.withValues(alpha: 0.8),
+                      size: 28,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    _statBadge('$aman', 'Aman', const Color(0xFFE8F5E9),
-                        const Color(0xFF2E7D32),),
+                    _statBadge(
+                      '$aman',
+                      'Aman',
+                      const Color(0xFFE8F5E9),
+                      const Color(0xFF2E7D32),
+                    ),
                     const SizedBox(width: 8),
-                    _statBadge('$waspada', 'Waspada', const Color(0xFFFFF3E0),
-                        const Color(0xFFF57C00),),
+                    _statBadge(
+                      '$waspada',
+                      'Waspada',
+                      const Color(0xFFFFF3E0),
+                      const Color(0xFFF57C00),
+                    ),
                     const SizedBox(width: 8),
-                    _statBadge('$kritis', 'Kritis', const Color(0xFFFFEBEE),
-                        const Color(0xFFC62828),),
+                    _statBadge(
+                      '$kritis',
+                      'Kritis',
+                      const Color(0xFFFFEBEE),
+                      const Color(0xFFC62828),
+                    ),
                   ],
                 ),
               ],
@@ -170,9 +220,14 @@ class _StokPanganPageState extends State<StokPanganPage> {
             BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
         child: Column(
           children: [
-            Text(value,
-                style: TextStyle(
-                    fontSize: 20, fontWeight: FontWeight.w800, color: fg,),),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: fg,
+              ),
+            ),
             Text(label, style: TextStyle(fontSize: 10, color: fg)),
           ],
         ),
@@ -203,18 +258,20 @@ class _StokPanganPageState extends State<StokPanganPage> {
                   boxShadow: isSelected
                       ? [
                           BoxShadow(
-                              color: color.withValues(alpha: 0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),),
+                            color: color.withValues(alpha: 0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
                         ]
                       : null,
                 ),
                 child: Text(
                   s[0].toUpperCase() + s.substring(1),
                   style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: isSelected ? Colors.white : Colors.grey[600],),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: isSelected ? Colors.white : Colors.grey[600],
+                  ),
                 ),
               ),
             );
@@ -240,8 +297,10 @@ class _StokPanganPageState extends State<StokPanganPage> {
               children: [
                 Icon(Icons.inventory_2_outlined, size: 56, color: Colors.grey),
                 SizedBox(height: 12),
-                Text('Tidak ada data stok',
-                    style: TextStyle(color: Colors.grey),),
+                Text(
+                  'Tidak ada data stok',
+                  style: TextStyle(color: Colors.grey),
+                ),
               ],
             ),
           ),
@@ -277,9 +336,10 @@ class _StokPanganPageState extends State<StokPanganPage> {
         border: Border.all(color: statusColor.withValues(alpha: 0.3)),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),),
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: Column(
@@ -290,18 +350,22 @@ class _StokPanganPageState extends State<StokPanganPage> {
             child: Row(
               children: [
                 Expanded(
-                  child: Text(kecamatanNama,
-                      style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF212121),),),
+                  child: Text(
+                    kecamatanNama,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF212121),
+                    ),
+                  ),
                 ),
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                      color: statusColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(20),),
+                    color: statusColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -310,9 +374,10 @@ class _StokPanganPageState extends State<StokPanganPage> {
                       Text(
                         worst[0].toUpperCase() + worst.substring(1),
                         style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: statusColor,),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: statusColor,
+                        ),
                       ),
                     ],
                   ),
@@ -346,17 +411,28 @@ class _StokPanganPageState extends State<StokPanganPage> {
           Row(
             children: [
               Expanded(
-                  child: Text(item.komoditasNama,
-                      style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF424242),),),),
-              Text('${fmt.format(item.stokKg)} ${item.komoditasSatuan}',
-                  style: TextStyle(fontSize: 11, color: Colors.grey[600]),),
+                child: Text(
+                  item.komoditasNama,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF424242),
+                  ),
+                ),
+              ),
+              Text(
+                '${fmt.format(item.stokKg)} ${item.komoditasSatuan}',
+                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+              ),
               const SizedBox(width: 8),
-              Text('${item.stokPersen.toStringAsFixed(0)}%',
-                  style: TextStyle(
-                      fontSize: 11, fontWeight: FontWeight.w700, color: color,),),
+              Text(
+                '${item.stokPersen.toStringAsFixed(0)}%',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 5),
@@ -386,7 +462,8 @@ class _StokPanganPageState extends State<StokPanganPage> {
                     style: TextStyle(color: Color(0xFF1976D2), fontSize: 12),
                   ),
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   ),
                 ),
                 TextButton.icon(
@@ -401,7 +478,8 @@ class _StokPanganPageState extends State<StokPanganPage> {
                     style: TextStyle(color: Color(0xFFC62828), fontSize: 12),
                   ),
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   ),
                 ),
               ],
@@ -421,17 +499,20 @@ class _StokPanganPageState extends State<StokPanganPage> {
           children: [
             const Icon(Icons.error_outline, size: 56, color: Color(0xFFEF5350)),
             const SizedBox(height: 12),
-            Text(message,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.grey),),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.grey),
+            ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: () => context.read<StokBloc>().add(LoadStokList()),
               icon: const Icon(Icons.refresh),
               label: const Text('Coba Lagi'),
               style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2E7D32),
-                  foregroundColor: Colors.white,),
+                backgroundColor: const Color(0xFF2E7D32),
+                foregroundColor: Colors.white,
+              ),
             ),
           ],
         ),
@@ -496,7 +577,8 @@ class _StokPanganPageState extends State<StokPanganPage> {
       context: ctx,
       builder: (_) => AlertDialog(
         title: const Text('Hapus Data Stok?'),
-        content: Text('Hapus stok ${item.komoditasNama} di ${item.kecamatanNama}?'),
+        content:
+            Text('Hapus stok ${item.komoditasNama} di ${item.kecamatanNama}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -602,7 +684,9 @@ class _UpsertStokSheetState extends State<_UpsertStokSheet> {
             ),
             const SizedBox(height: 16),
             Text(
-              widget.initialItem == null ? 'Update Data Stok' : 'Edit Data Stok',
+              widget.initialItem == null
+                  ? 'Update Data Stok'
+                  : 'Edit Data Stok',
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 20),

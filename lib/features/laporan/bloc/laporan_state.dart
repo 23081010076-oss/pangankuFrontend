@@ -1,14 +1,23 @@
- import 'package:equatable/equatable.dart';
+// Penjelasan file:
+// Feature: laporan
+// Layer: logic
+// File: laporan_state
+// Fungsi utama: File ini mengatur alur proses, event, state, dan aturan aplikasi.
+import 'package:equatable/equatable.dart';
 
+// Base state ini menjadi induk untuk semua kondisi tampilan atau proses pada fitur ini.
 abstract class LaporanState extends Equatable {
   @override
   List<Object?> get props => [];
 }
 
+// State ini menunjukkan kondisi 'LaporanInitial' pada fitur ini.
 class LaporanInitial extends LaporanState {}
 
+// State ini menunjukkan kondisi 'LaporanLoading' pada fitur ini.
 class LaporanLoading extends LaporanState {}
 
+// State ini menunjukkan kondisi 'LaporanLoaded' pada fitur ini.
 class LaporanLoaded extends LaporanState {
   final List<LaporanItem> laporanList;
 
@@ -18,10 +27,13 @@ class LaporanLoaded extends LaporanState {
   List<Object> get props => [laporanList];
 }
 
+// State ini menunjukkan kondisi 'LaporanCreating' pada fitur ini.
 class LaporanCreating extends LaporanState {}
 
+// State ini menunjukkan kondisi 'LaporanCreated' pada fitur ini.
 class LaporanCreated extends LaporanState {}
 
+// State ini menunjukkan kondisi 'LaporanError' pada fitur ini.
 class LaporanError extends LaporanState {
   final String message;
 
@@ -66,8 +78,11 @@ class LaporanItem {
   }
 }
 
+// State ini menunjukkan kondisi 'LaporanSubmitting' pada fitur ini.
 class LaporanSubmitting extends LaporanState {}
 
+// State ini menunjukkan kondisi 'LaporanStatusUpdated' pada fitur ini.
 class LaporanStatusUpdated extends LaporanState {}
 
+// State ini menunjukkan kondisi 'LaporanDeleted' pada fitur ini.
 class LaporanDeleted extends LaporanState {}

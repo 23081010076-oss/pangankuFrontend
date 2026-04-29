@@ -1,3 +1,8 @@
+// Penjelasan file:
+// Feature: splash
+// Layer: ui
+// File: splash_page
+// Fungsi utama: File ini mengatur tampilan halaman, komponen visual, dan interaksi pengguna.
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 

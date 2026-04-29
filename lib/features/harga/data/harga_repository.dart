@@ -1,12 +1,19 @@
+// Penjelasan file:
+// Feature: harga
+// Layer: api
+// File: harga_repository
+// Fungsi utama: File ini mengatur komunikasi data dengan backend atau sumber data aplikasi.
 import 'package:dio/dio.dart';
 
 import '../../../core/network/dio_client.dart';
 
+// Repository ini menjadi jembatan antara fitur dan sumber data/backend.
 class HargaRepository {
   final DioClient _client;
 
   HargaRepository(this._client);
 
+// Method ini mengambil data dari backend lalu mengubahnya ke bentuk yang aman dipakai di aplikasi.
   Future<List<Map<String, dynamic>>> fetchLatestHarga() async {
     final response = await _client.dio.get('/harga/latest');
     final data = response.data;
@@ -20,6 +27,7 @@ class HargaRepository {
         .toList();
   }
 
+// Method ini mengambil data dari backend lalu mengubahnya ke bentuk yang aman dipakai di aplikasi.
   Future<List<Map<String, dynamic>>> fetchKomoditas() async {
     final response = await _client.dio.get('/komoditas');
     final data = response.data;
@@ -33,6 +41,7 @@ class HargaRepository {
         .toList();
   }
 
+// Method ini mengambil data dari backend lalu mengubahnya ke bentuk yang aman dipakai di aplikasi.
   Future<List<Map<String, dynamic>>> fetchKecamatan() async {
     final response = await _client.dio.get('/kecamatan');
     final data = response.data;
@@ -46,6 +55,7 @@ class HargaRepository {
         .toList();
   }
 
+// Method ini mengambil data dari backend lalu mengubahnya ke bentuk yang aman dipakai di aplikasi.
   Future<List<Map<String, dynamic>>> fetchHargaTrend({
     required String komoditasId,
     required String periode,
@@ -67,6 +77,7 @@ class HargaRepository {
         .toList();
   }
 
+// Method ini mengambil data dari backend lalu mengubahnya ke bentuk yang aman dipakai di aplikasi.
   Future<Map<String, dynamic>> fetchForecast({
     required String komoditasId,
     String? kecamatanId,
@@ -85,6 +96,7 @@ class HargaRepository {
     return {};
   }
 
+// Method ini mengirim request untuk menambahkan data baru ke backend.
   Future<void> createHarga({
     required String komoditasId,
     required String kecamatanId,
@@ -102,6 +114,7 @@ class HargaRepository {
     );
   }
 
+// Method ini mengirim request untuk memperbarui data yang sudah ada di backend.
   Future<void> updateHarga({
     required String id,
     required double hargaPerKg,
@@ -116,6 +129,7 @@ class HargaRepository {
     );
   }
 
+// Method ini menghapus data berdasarkan id atau identitas tertentu.
   Future<void> deleteHarga(String id) async {
     await _client.dio.delete('/harga/$id');
   }

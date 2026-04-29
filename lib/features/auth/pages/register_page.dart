@@ -1,3 +1,8 @@
+// Penjelasan file:
+// Feature: auth
+// Layer: ui
+// File: register_page
+// Fungsi utama: File ini mengatur tampilan halaman, komponen visual, dan interaksi pengguna.
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -19,7 +24,7 @@ class _RegisterPageState extends State<RegisterPage>
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
-  String _selectedRole = 'publik';
+  String _selectedRole = 'petani';
   bool _obscure = true;
 
   late AnimationController _animController;
@@ -111,7 +116,7 @@ class _RegisterPageState extends State<RegisterPage>
                     child: Column(
                       children: [
                         const SizedBox(height: 20),
-                        const Text('🌾', style: TextStyle(fontSize: 52)),
+                        const Text('ðŸŒ¾', style: TextStyle(fontSize: 52)),
                         const SizedBox(height: 8),
                         const Text(
                           'PanganKu',
@@ -196,16 +201,8 @@ class _RegisterPageState extends State<RegisterPage>
                                   ),
                                   items: const [
                                     DropdownMenuItem(
-                                      value: 'publik',
-                                      child: Text('Publik'),
-                                    ),
-                                    DropdownMenuItem(
                                       value: 'petani',
                                       child: Text('Petani'),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 'pedagang',
-                                      child: Text('Pedagang'),
                                     ),
                                   ],
                                   onChanged: (v) {

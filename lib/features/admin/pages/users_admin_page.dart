@@ -1,3 +1,8 @@
+// Penjelasan file:
+// Feature: admin
+// Layer: ui
+// File: users_admin_page
+// Fungsi utama: File ini mengatur tampilan halaman, komponen visual, dan interaksi pengguna.
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -22,7 +27,7 @@ class _UsersAdminPageState extends State<UsersAdminPage> {
   int _total = 0;
   static const int _limit = 20;
 
-  final _roles = ['Semua', 'admin', 'petugas', 'petani', 'pedagang', 'publik'];
+  final _roles = ['Semua', 'admin', 'petugas', 'petani'];
 
   @override
   void initState() {
@@ -65,7 +70,7 @@ class _UsersAdminPageState extends State<UsersAdminPage> {
   }
 
   Future<void> _updateRole(String id, String currentRole) async {
-    final roles = ['admin', 'petugas', 'petani', 'pedagang', 'publik'];
+    final roles = ['admin', 'petugas', 'petani'];
     String? selected = currentRole;
 
     final newRole = await showDialog<String>(
@@ -92,8 +97,9 @@ class _UsersAdminPageState extends State<UsersAdminPage> {
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Batal'),),
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Batal'),
+            ),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, selected),
               style: ElevatedButton.styleFrom(
@@ -123,10 +129,12 @@ class _UsersAdminPageState extends State<UsersAdminPage> {
 
   void _showSnack(String msg, {bool isError = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg),
-      backgroundColor: isError ? Colors.red[700] : const Color(0xFF2E7D32),
-    ),);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: isError ? Colors.red[700] : const Color(0xFF2E7D32),
+      ),
+    );
   }
 
   @override
@@ -177,7 +185,9 @@ class _UsersAdminPageState extends State<UsersAdminPage> {
                         borderSide: BorderSide.none,
                       ),
                       contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12,),
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                     ),
                     onSubmitted: (_) => _loadData(),
                   ),
@@ -218,15 +228,18 @@ class _UsersAdminPageState extends State<UsersAdminPage> {
           if (_loading)
             const SliverFillRemaining(
               child: Center(
-                  child: CircularProgressIndicator(color: Color(0xFF2E7D32)),),
+                child: CircularProgressIndicator(color: Color(0xFF2E7D32)),
+              ),
             )
           else if (_error != null)
             SliverFillRemaining(child: _buildError())
           else if (_users.isEmpty)
             const SliverFillRemaining(
               child: Center(
-                child: Text('Tidak ada pengguna ditemukan',
-                    style: TextStyle(color: Colors.grey),),
+                child: Text(
+                  'Tidak ada pengguna ditemukan',
+                  style: TextStyle(color: Colors.grey),
+                ),
               ),
             )
           else ...[
@@ -258,7 +271,7 @@ class _UsersAdminPageState extends State<UsersAdminPage> {
     final id = user['id']?.toString() ?? '';
     final name = user['name']?.toString() ?? '';
     final email = user['email']?.toString() ?? '';
-    final role = user['role']?.toString() ?? 'publik';
+    final role = user['role']?.toString() ?? 'petani';
     final isActive = user['is_active'] as bool? ?? true;
     final initials = name.isNotEmpty
         ? name.trim().split(' ').take(2).map((w) => w[0].toUpperCase()).join()
@@ -320,8 +333,10 @@ class _UsersAdminPageState extends State<UsersAdminPage> {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(email,
-                style: const TextStyle(fontSize: 11, color: Colors.grey),),
+            Text(
+              email,
+              style: const TextStyle(fontSize: 11, color: Colors.grey),
+            ),
             const SizedBox(height: 4),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -341,8 +356,10 @@ class _UsersAdminPageState extends State<UsersAdminPage> {
           ],
         ),
         trailing: IconButton(
-          icon: const Icon(Icons.manage_accounts_outlined,
-              color: Color(0xFF2E7D32),),
+          icon: const Icon(
+            Icons.manage_accounts_outlined,
+            color: Color(0xFF2E7D32),
+          ),
           tooltip: 'Ubah Peran',
           onPressed: () => _updateRole(id, role),
         ),
@@ -357,8 +374,10 @@ class _UsersAdminPageState extends State<UsersAdminPage> {
         children: [
           const Icon(Icons.error_outline, size: 48, color: Colors.grey),
           const SizedBox(height: 12),
-          Text(_error ?? 'Terjadi kesalahan',
-              style: const TextStyle(color: Colors.grey),),
+          Text(
+            _error ?? 'Terjadi kesalahan',
+            style: const TextStyle(color: Colors.grey),
+          ),
           const SizedBox(height: 16),
           ElevatedButton.icon(
             onPressed: _loadData,
@@ -382,10 +401,8 @@ class _UsersAdminPageState extends State<UsersAdminPage> {
         return 'Petugas';
       case 'petani':
         return 'Petani';
-      case 'pedagang':
-        return 'Pedagang';
       default:
-        return 'Publik';
+        return 'Petani';
     }
   }
 
@@ -397,10 +414,8 @@ class _UsersAdminPageState extends State<UsersAdminPage> {
         return const Color(0xFF1565C0);
       case 'petani':
         return const Color(0xFF2E7D32);
-      case 'pedagang':
-        return const Color(0xFF00897B);
       default:
-        return Colors.grey;
+        return const Color(0xFF2E7D32);
     }
   }
 }

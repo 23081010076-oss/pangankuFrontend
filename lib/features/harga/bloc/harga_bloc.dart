@@ -1,9 +1,15 @@
+// Penjelasan file:
+// Feature: harga
+// Layer: logic
+// File: harga_bloc
+// Fungsi utama: File ini mengatur alur proses, event, state, dan aturan aplikasi.
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:dio/dio.dart';
 import '../data/harga_repository.dart';
 import 'harga_event.dart';
 import 'harga_state.dart';
 
+// Bloc ini menerima event dari UI, menjalankan proses, lalu mengeluarkan state baru.
 class HargaBloc extends Bloc<HargaEvent, HargaState> {
   final HargaRepository _repository;
 
@@ -16,8 +22,11 @@ class HargaBloc extends Bloc<HargaEvent, HargaState> {
     on<RefreshHarga>((_, __) => add(LoadHargaList()));
   }
 
+// Handler ini dijalankan saat event tertentu diterima oleh bloc.
   Future<void> _onLoadHargaList(
-      LoadHargaList event, Emitter<HargaState> emit,) async {
+    LoadHargaList event,
+    Emitter<HargaState> emit,
+  ) async {
     emit(HargaLoading());
     try {
       final results = await Future.wait([
@@ -61,8 +70,11 @@ class HargaBloc extends Bloc<HargaEvent, HargaState> {
     }
   }
 
+// Handler ini dijalankan saat event tertentu diterima oleh bloc.
   Future<void> _onLoadHargaTrend(
-      LoadHargaTrend event, Emitter<HargaState> emit,) async {
+    LoadHargaTrend event,
+    Emitter<HargaState> emit,
+  ) async {
     final current = state is HargaLoaded ? state as HargaLoaded : null;
     try {
       final data = await _repository.fetchHargaTrend(
@@ -72,12 +84,14 @@ class HargaBloc extends Bloc<HargaEvent, HargaState> {
 
       final trendData = data.map((j) => TrendData.fromJson(j)).toList();
 
-      emit(HargaLoaded(
-        hargaList: current?.hargaList ?? [],
-        kategoris: current?.kategoris ?? [],
-        trendData: trendData,
-        selectedKomoditas: event.komoditasId,
-      ),);
+      emit(
+        HargaLoaded(
+          hargaList: current?.hargaList ?? [],
+          kategoris: current?.kategoris ?? [],
+          trendData: trendData,
+          selectedKomoditas: event.komoditasId,
+        ),
+      );
     } on DioException catch (e) {
       emit(
         HargaError(
@@ -87,8 +101,11 @@ class HargaBloc extends Bloc<HargaEvent, HargaState> {
     }
   }
 
+// Handler ini dijalankan saat event tertentu diterima oleh bloc.
   Future<void> _onCreateHarga(
-      CreateHarga event, Emitter<HargaState> emit,) async {
+    CreateHarga event,
+    Emitter<HargaState> emit,
+  ) async {
     final current = state is HargaLoaded ? state as HargaLoaded : null;
     emit(HargaCreating());
     try {
@@ -110,8 +127,11 @@ class HargaBloc extends Bloc<HargaEvent, HargaState> {
     }
   }
 
+// Handler ini dijalankan saat event tertentu diterima oleh bloc.
   Future<void> _onUpdateHarga(
-      UpdateHarga event, Emitter<HargaState> emit,) async {
+    UpdateHarga event,
+    Emitter<HargaState> emit,
+  ) async {
     emit(HargaCreating());
     try {
       await _repository.updateHarga(
@@ -130,8 +150,11 @@ class HargaBloc extends Bloc<HargaEvent, HargaState> {
     }
   }
 
+// Handler ini dijalankan saat event tertentu diterima oleh bloc.
   Future<void> _onDeleteHarga(
-      DeleteHarga event, Emitter<HargaState> emit,) async {
+    DeleteHarga event,
+    Emitter<HargaState> emit,
+  ) async {
     emit(HargaCreating());
     try {
       await _repository.deleteHarga(event.id);

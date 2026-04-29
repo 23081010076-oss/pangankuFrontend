@@ -1,9 +1,15 @@
+// Penjelasan file:
+// Feature: laporan
+// Layer: logic
+// File: laporan_bloc
+// Fungsi utama: File ini mengatur alur proses, event, state, dan aturan aplikasi.
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:dio/dio.dart';
 import '../data/laporan_repository.dart';
 import 'laporan_event.dart';
 import 'laporan_state.dart';
 
+// Bloc ini menerima event dari UI, menjalankan proses, lalu mengeluarkan state baru.
 class LaporanBloc extends Bloc<LaporanEvent, LaporanState> {
   final LaporanRepository _repository;
 
@@ -15,13 +21,15 @@ class LaporanBloc extends Bloc<LaporanEvent, LaporanState> {
     on<DeleteLaporan>(_onDeleteLaporan);
   }
 
+// Handler ini dijalankan saat event tertentu diterima oleh bloc.
   Future<void> _onRefreshLaporan(
     RefreshLaporan event,
     Emitter<LaporanState> emit,
   ) async {
     try {
       final list = await _repository.fetchLaporanList();
-      final laporanList = list.map((json) => LaporanItem.fromJson(json)).toList();
+      final laporanList =
+          list.map((json) => LaporanItem.fromJson(json)).toList();
       emit(LaporanLoaded(laporanList: laporanList));
     } on DioException catch (e) {
       final message = _repository.getErrorMessage(
@@ -34,6 +42,7 @@ class LaporanBloc extends Bloc<LaporanEvent, LaporanState> {
     }
   }
 
+// Handler ini dijalankan saat event tertentu diterima oleh bloc.
   Future<void> _onLoadLaporanList(
     LoadLaporanList event,
     Emitter<LaporanState> emit,
@@ -41,7 +50,8 @@ class LaporanBloc extends Bloc<LaporanEvent, LaporanState> {
     emit(LaporanLoading());
     try {
       final list = await _repository.fetchLaporanList();
-      final laporanList = list.map((json) => LaporanItem.fromJson(json)).toList();
+      final laporanList =
+          list.map((json) => LaporanItem.fromJson(json)).toList();
 
       emit(LaporanLoaded(laporanList: laporanList));
     } on DioException catch (e) {
@@ -55,6 +65,7 @@ class LaporanBloc extends Bloc<LaporanEvent, LaporanState> {
     }
   }
 
+// Handler ini dijalankan saat event tertentu diterima oleh bloc.
   Future<void> _onCreateLaporan(
     CreateLaporan event,
     Emitter<LaporanState> emit,
@@ -82,8 +93,11 @@ class LaporanBloc extends Bloc<LaporanEvent, LaporanState> {
     }
   }
 
+// Handler ini dijalankan saat event tertentu diterima oleh bloc.
   Future<void> _onUpdateLaporanStatus(
-      UpdateLaporanStatus event, Emitter<LaporanState> emit,) async {
+    UpdateLaporanStatus event,
+    Emitter<LaporanState> emit,
+  ) async {
     final prev = state is LaporanLoaded ? state as LaporanLoaded : null;
     emit(LaporanSubmitting());
     try {
@@ -103,8 +117,11 @@ class LaporanBloc extends Bloc<LaporanEvent, LaporanState> {
     }
   }
 
+// Handler ini dijalankan saat event tertentu diterima oleh bloc.
   Future<void> _onDeleteLaporan(
-      DeleteLaporan event, Emitter<LaporanState> emit,) async {
+    DeleteLaporan event,
+    Emitter<LaporanState> emit,
+  ) async {
     emit(LaporanSubmitting());
     try {
       await _repository.deleteLaporan(event.id);

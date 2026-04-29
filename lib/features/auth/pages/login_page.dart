@@ -1,3 +1,8 @@
+// Penjelasan file:
+// Feature: auth
+// Layer: ui
+// File: login_page
+// Fungsi utama: File ini mengatur tampilan halaman, komponen visual, dan interaksi pengguna.
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -223,9 +228,10 @@ class _LoginPageState extends State<LoginPage>
           Text(
             'Nama Pengguna',
             style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[700],),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[700],
+            ),
           ),
           const SizedBox(height: 8),
           TextFormField(
@@ -275,9 +281,10 @@ class _LoginPageState extends State<LoginPage>
           Text(
             'Kata Sandi',
             style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[700],),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[700],
+            ),
           ),
           const SizedBox(height: 8),
           TextFormField(
@@ -348,9 +355,10 @@ class _LoginPageState extends State<LoginPage>
               child: const Text(
                 'Lupa kata sandi?',
                 style: TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF2E7D32),
-                    fontWeight: FontWeight.w600,),
+                  fontSize: 12,
+                  color: Color(0xFF2E7D32),
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),
@@ -367,7 +375,9 @@ class _LoginPageState extends State<LoginPage>
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
-                          color: Colors.white, strokeWidth: 2.5,),
+                        color: Colors.white,
+                        strokeWidth: 2.5,
+                      ),
                     ),
                   ),
                 )
@@ -391,14 +401,20 @@ class _LoginPageState extends State<LoginPage>
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text('Masuk',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,),),
+                        Text(
+                          'Masuk',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                         SizedBox(width: 4),
-                        Icon(Icons.chevron_right,
-                            color: Colors.white, size: 18,),
+                        Icon(
+                          Icons.chevron_right,
+                          color: Colors.white,
+                          size: 18,
+                        ),
                       ],
                     ),
                   ),
@@ -406,7 +422,7 @@ class _LoginPageState extends State<LoginPage>
           const SizedBox(height: 24),
           Center(
             child: Text(
-              '© 2024 Dinas Ketahanan Pangan Kab. Lamongan',
+              'Â© 2024 Dinas Ketahanan Pangan Kab. Lamongan',
               style: TextStyle(fontSize: 10, color: Colors.grey[400]),
             ),
           ),

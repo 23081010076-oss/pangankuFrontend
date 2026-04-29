@@ -1,3 +1,8 @@
+// Penjelasan file:
+// Feature: stok
+// Layer: logic
+// File: stok_state
+// Fungsi utama: File ini mengatur alur proses, event, state, dan aturan aplikasi.
 class StokItem {
   final String id;
   final String kecamatanId;
@@ -10,6 +15,8 @@ class StokItem {
   final double stokPersen;
   final String statusStok;
   final String updatedAt;
+  final String? gambarUrl;
+  final String? kategori;
 
   const StokItem({
     required this.id,
@@ -23,6 +30,8 @@ class StokItem {
     required this.stokPersen,
     required this.statusStok,
     required this.updatedAt,
+    this.gambarUrl,
+    this.kategori,
   });
 
   factory StokItem.fromJson(Map<String, dynamic> json) {
@@ -55,26 +64,35 @@ class StokItem {
       stokPersen: persen,
       statusStok: status,
       updatedAt: json['updated_at']?.toString() ?? '',
+      gambarUrl: kom['gambar_url']?.toString(),
+      kategori: kom['kategori']?.toString(),
     );
   }
 }
 
+// Base state ini menjadi induk untuk semua kondisi tampilan atau proses pada fitur ini.
 abstract class StokState {}
 
+// State ini menunjukkan kondisi 'StokInitial' pada fitur ini.
 class StokInitial extends StokState {}
 
+// State ini menunjukkan kondisi 'StokLoading' pada fitur ini.
 class StokLoading extends StokState {}
 
+// State ini menunjukkan kondisi 'StokLoaded' pada fitur ini.
 class StokLoaded extends StokState {
   final List<StokItem> items;
   StokLoaded(this.items);
 }
 
+// State ini menunjukkan kondisi 'StokError' pada fitur ini.
 class StokError extends StokState {
   final String message;
   StokError(this.message);
 }
 
+// State ini menunjukkan kondisi 'StokSaving' pada fitur ini.
 class StokSaving extends StokState {}
 
+// State ini menunjukkan kondisi 'StokSaved' pada fitur ini.
 class StokSaved extends StokState {}

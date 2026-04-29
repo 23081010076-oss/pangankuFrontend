@@ -1,3 +1,8 @@
+// Penjelasan file:
+// Feature: distribusi
+// Layer: logic
+// File: distribusi_state
+// Fungsi utama: File ini mengatur alur proses, event, state, dan aturan aplikasi.
 class DistribusiItem {
   final String id;
   final String dari;
@@ -46,24 +51,32 @@ class DistribusiItem {
   }
 }
 
+// Base state ini menjadi induk untuk semua kondisi tampilan atau proses pada fitur ini.
 abstract class DistribusiState {}
 
+// State ini menunjukkan kondisi 'DistribusiInitial' pada fitur ini.
 class DistribusiInitial extends DistribusiState {}
 
+// State ini menunjukkan kondisi 'DistribusiLoading' pada fitur ini.
 class DistribusiLoading extends DistribusiState {}
 
+// State ini menunjukkan kondisi 'DistribusiLoaded' pada fitur ini.
 class DistribusiLoaded extends DistribusiState {
   final List<DistribusiItem> items;
   DistribusiLoaded(this.items);
 }
 
+// State ini menunjukkan kondisi 'DistribusiError' pada fitur ini.
 class DistribusiError extends DistribusiState {
   final String message;
   DistribusiError(this.message);
 }
 
+// State ini menunjukkan kondisi 'DistribusiSaving' pada fitur ini.
 class DistribusiSaving extends DistribusiState {}
 
+// State ini menunjukkan kondisi 'DistribusiSaved' pada fitur ini.
 class DistribusiSaved extends DistribusiState {}
 
+// State ini menunjukkan kondisi 'DistribusiStatusUpdated' pada fitur ini.
 class DistribusiStatusUpdated extends DistribusiState {}

@@ -1,3 +1,9 @@
+// Doc:
+// Tujuan: Menjadi shell halaman dashboard dan mengorkestrasi halaman tab beranda, harga, stok, distribusi, laporan, dan profil.
+// Dipakai oleh: Router utama aplikasi untuk entry page setelah login.
+// Dependensi utama: Bloc auth/harga/laporan/analytics/profile/stok/distribusi/notifikasi, AppConstants, repository fitur terkait, part dashboard widgets.
+// Fungsi public/utama: DashboardPage, _DashboardPageState lifecycle/build, _buildBottomNav, _getCurrentPage.
+// Side effect penting: Dispatch load notifikasi, membuat bloc provider halaman turunan, dan navigasi bottom tab/router.
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -28,8 +34,15 @@ import '../../distribusi/bloc/distribusi_bloc.dart';
 import '../../distribusi/bloc/distribusi_event.dart';
 import '../../distribusi/data/distribusi_repository.dart';
 import '../../distribusi/pages/distribusi_page.dart';
+import '../../notifikasi/bloc/notifikasi_bloc.dart';
+import '../../notifikasi/bloc/notifikasi_event.dart';
+import '../../notifikasi/bloc/notifikasi_state.dart';
+import '../../../core/constants/app_constants.dart';
+import '../../../core/widgets/live_refresh.dart';
+import '../../../core/widgets/last_updated_badge.dart';
 
 part '../widgets/dashboard_home_section.dart';
+part '../widgets/dashboard_chart_card.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -40,6 +53,13 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   int _currentIndex = 0;
+  DateTime? _homeLastUpdatedAt;
+
+  @override
+  void initState() {
+    super.initState();
+    context.read<NotifikasiBloc>().add(LoadNotifikasiList());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -145,12 +165,39 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget _getCurrentPage() {
     switch (_currentIndex) {
       case 0:
-        return BlocProvider(
-          create: (context) =>
-              AnalyticsBloc(context.read<AnalyticsRepository>())
-                ..add(LoadDashboardStats()),
-          child:
-              _HomePage(onTabChange: (i) => setState(() => _currentIndex = i)),
+        return MultiBlocProvider(
+          providers: [
+            BlocProvider(
+              create: (context) =>
+                  AnalyticsBloc(context.read<AnalyticsRepository>())
+                    ..add(LoadDashboardStats()),
+            ),
+          ],
+          child: BlocListener<AnalyticsBloc, AnalyticsState>(
+            listener: (context, state) {
+              if (state is AnalyticsLoaded) {
+                setState(() => _homeLastUpdatedAt = DateTime.now());
+              }
+            },
+            child: Builder(
+              builder: (context) => LiveRefresh(
+                interval: const Duration(seconds: 30),
+                onRefresh: () async {
+                  final state = context.read<AnalyticsBloc>().state;
+                  final periode =
+                      state is AnalyticsLoaded ? state.stats.periode : '7d';
+                  context.read<AnalyticsBloc>().add(
+                        RefreshDashboardStats(periode: periode),
+                      );
+                  context.read<NotifikasiBloc>().add(RefreshNotifikasi());
+                },
+                child: _HomePage(
+                  onTabChange: (i) => setState(() => _currentIndex = i),
+                  lastUpdatedAt: _homeLastUpdatedAt,
+                ),
+              ),
+            ),
+          ),
         );
       case 1:
         return BlocProvider(
@@ -174,7 +221,8 @@ class _DashboardPageState extends State<DashboardPage> {
         return MultiBlocProvider(
           providers: [
             BlocProvider(
-              create: (context) => LaporanBloc(context.read<LaporanRepository>()),
+              create: (context) =>
+                  LaporanBloc(context.read<LaporanRepository>()),
             ),
             BlocProvider(
               create: (context) =>
@@ -186,8 +234,8 @@ class _DashboardPageState extends State<DashboardPage> {
         );
       case 5:
         return BlocProvider(
-          create: (context) =>
-              ProfileBloc(context.read<ProfileRepository>())..add(LoadProfile()),
+          create: (context) => ProfileBloc(context.read<ProfileRepository>())
+            ..add(LoadProfile()),
           child: const ProfilePage(),
         );
       default:

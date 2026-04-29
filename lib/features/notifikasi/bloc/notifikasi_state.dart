@@ -1,3 +1,8 @@
+// Penjelasan file:
+// Feature: notifikasi
+// Layer: logic
+// File: notifikasi_state
+// Fungsi utama: File ini mengatur alur proses, event, state, dan aturan aplikasi.
 class NotifikasiItem {
   final String id;
   final String judul;
@@ -36,12 +41,16 @@ class NotifikasiItem {
       );
 }
 
+// Base state ini menjadi induk untuk semua kondisi tampilan atau proses pada fitur ini.
 abstract class NotifikasiState {}
 
+// State ini menunjukkan kondisi 'NotifikasiInitial' pada fitur ini.
 class NotifikasiInitial extends NotifikasiState {}
 
+// State ini menunjukkan kondisi 'NotifikasiLoading' pada fitur ini.
 class NotifikasiLoading extends NotifikasiState {}
 
+// State ini menunjukkan kondisi 'NotifikasiLoaded' pada fitur ini.
 class NotifikasiLoaded extends NotifikasiState {
   final List<NotifikasiItem> items;
   final int unreadCount;
@@ -50,6 +59,7 @@ class NotifikasiLoaded extends NotifikasiState {
       : unreadCount = items.where((n) => !n.isRead).length;
 }
 
+// State ini menunjukkan kondisi 'NotifikasiError' pada fitur ini.
 class NotifikasiError extends NotifikasiState {
   final String message;
   NotifikasiError(this.message);

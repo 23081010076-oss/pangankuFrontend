@@ -1,11 +1,31 @@
+// Doc:
+// Tujuan: Menyusun beranda dashboard termasuk header, ringkasan status stok, grafik ringkas, menu cepat, dan alert operasional.
+// Dipakai oleh: dashboard_page.dart melalui part _HomePage sebagai tab beranda utama.
+// Dependensi utama: AuthBloc, AnalyticsBloc, NotifikasiBloc, GoRouter, widget chart dashboard dan badge shared.
+// Fungsi public/utama: _HomePage.build, _buildHeader, _buildStatusCards, _buildMenuGrid, _buildAlerts.
+// Side effect penting: Navigasi ke route fitur, membuka bottom sheet detail kecamatan, membaca state BLoC untuk render UI.
 part of '../pages/dashboard_page.dart';
 
 class _HomePage extends StatelessWidget {
   final void Function(int) onTabChange;
-  const _HomePage({required this.onTabChange});
+  final DateTime? lastUpdatedAt;
+
+  const _HomePage({required this.onTabChange, this.lastUpdatedAt});
+
+  String _currentRole(BuildContext context) {
+    final authState = context.read<AuthBloc>().state;
+    return authState is AuthAuthenticated ? authState.role : 'petani';
+  }
+
+  bool _isPrivilegedRole(String role) {
+    return role == 'admin' || role == 'petugas';
+  }
 
   @override
   Widget build(BuildContext context) {
+    final role = _currentRole(context);
+    final isPrivileged = _isPrivilegedRole(role);
+
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       child: Column(
@@ -17,13 +37,18 @@ class _HomePage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: LastUpdatedBadge(timestamp: lastUpdatedAt),
+                ),
+                const SizedBox(height: 14),
                 _buildStatusCards(context),
                 const SizedBox(height: 20),
                 _buildChartCard(),
                 const SizedBox(height: 20),
-                const Text(
-                  'Menu Utama',
-                  style: TextStyle(
+                Text(
+                  isPrivileged ? 'Menu Operasional' : 'Menu Informasi',
+                  style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: Color(0xFF424242),
@@ -31,45 +56,48 @@ class _HomePage extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 _buildMenuGrid(context),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Peringatan Aktif',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF424242),
+                if (isPrivileged) ...[
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Peringatan Aktif',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF424242),
+                        ),
                       ),
-                    ),
-                    BlocBuilder<AnalyticsBloc, AnalyticsState>(
-                      builder: (ctx, s) {
-                        final n = s is AnalyticsLoaded ? s.stats.alertCount : 0;
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFEBEE),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            '$n Aktif',
-                            style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFFC62828),
+                      BlocBuilder<AnalyticsBloc, AnalyticsState>(
+                        builder: (ctx, s) {
+                          final n =
+                              s is AnalyticsLoaded ? s.stats.alertCount : 0;
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
                             ),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                _buildAlerts(),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFEBEE),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              '$n Aktif',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFFC62828),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _buildAlerts(),
+                ],
                 const SizedBox(height: 20),
               ],
             ),
@@ -161,17 +189,25 @@ class _HomePage extends StatelessWidget {
                                 size: 20,
                               ),
                             ),
-                            Positioned(
-                              top: 6,
-                              right: 6,
-                              child: Container(
-                                width: 8,
-                                height: 8,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFFFF5722),
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
+                            BlocBuilder<NotifikasiBloc, NotifikasiState>(
+                              builder: (ctx, state) {
+                                if (state is NotifikasiLoaded &&
+                                    state.unreadCount > 0) {
+                                  return Positioned(
+                                    top: 6,
+                                    right: 6,
+                                    child: Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFFFF5722),
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  );
+                                }
+                                return const SizedBox.shrink();
+                              },
                             ),
                           ],
                         ),
@@ -195,108 +231,12 @@ class _HomePage extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  GestureDetector(
-                    onTap: () => _showSearchDestination(context),
-                    child: Container(
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.25),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          const SizedBox(width: 12),
-                          Icon(
-                            Icons.search,
-                            color: Colors.white.withValues(alpha: 0.7),
-                            size: 18,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Cari komoditas, kecamatan...',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.6),
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
           ),
         ],
       ),
-    );
-  }
-
-  void _showSearchDestination(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Cari Data Di',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                ListTile(
-                  leading: const Icon(Icons.trending_up, color: Color(0xFF1976D2)),
-                  title: const Text('Harga Komoditas'),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    onTabChange(1);
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.inventory_2, color: Color(0xFFF57C00)),
-                  title: const Text('Stok Pangan'),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    onTabChange(2);
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.local_shipping, color: Color(0xFF2E7D32)),
-                  title: const Text('Distribusi Pangan'),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    onTabChange(3);
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 
@@ -345,62 +285,219 @@ class _HomePage extends StatelessWidget {
             'icon': Icons.error_outline,
           },
         ];
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: cards.map((c) {
-            final kecList = c['list'] as List<String>;
-            return Expanded(
-              child: Container(
-                margin: EdgeInsets.only(right: cards.indexOf(c) < 2 ? 10 : 0),
-                padding:
-                    const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: (c['bg'] as Color), width: 1.5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+        return SizedBox(
+          height: 176,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            itemCount: cards.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              final card = cards[index];
+              final kecList = card['list'] as List<String>;
+              return SizedBox(
+                width: 220,
+                child: GestureDetector(
+                  onTap: kecList.isEmpty
+                      ? null
+                      : () {
+                          showModalBottomSheet<void>(
+                            context: context,
+                            backgroundColor: Colors.white,
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(
+                                top: Radius.circular(20),
+                              ),
+                            ),
+                            builder: (ctx) => _buildKecamatanListSheet(
+                              card['label'] as String,
+                              card['color'] as Color,
+                              kecList,
+                            ),
+                          );
+                        },
+                  child: _buildDashboardStatusCard(
+                    label: card['label'] as String,
+                    value: card['value'] as String,
+                    color: card['color'] as Color,
+                    bg: card['bg'] as Color,
+                    icon: card['icon'] as IconData,
+                    detailCount: kecList.length,
+                  ),
                 ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      c['icon'] as IconData,
-                      size: 22,
-                      color: c['color'] as Color,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      c['value'] as String,
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: c['color'] as Color,
-                      ),
-                    ),
-                    Text(
-                      c['label'] as String,
-                      style: TextStyle(fontSize: 10, color: Colors.grey[600], fontWeight: FontWeight.bold),
-                    ),
-                    if (kecList.isNotEmpty) const SizedBox(height: 8),
-                    if (kecList.isNotEmpty)
-                      Text(
-                        kecList.join(', '),
-                        style: TextStyle(fontSize: 9, color: Colors.grey[800]),
-                        textAlign: TextAlign.center,
-                      ),
-                  ],
-                ),
-              ),
-            );
-          }).toList(),
+              );
+            },
+          ),
         );
       },
+    );
+  }
+
+  Widget _buildDashboardStatusCard({
+    required String label,
+    required String value,
+    required Color color,
+    required Color bg,
+    required IconData icon,
+    required int detailCount,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            bg,
+            Colors.white,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.18), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.10),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.88),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(icon, size: 22, color: color),
+              ),
+              const Spacer(),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '$detailCount area',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
+              color: color,
+              height: 1,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF1F2933),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            detailCount > 0
+                ? 'Ketuk untuk lihat daftar kecamatan.'
+                : 'Belum ada wilayah yang perlu dirinci.',
+            style: TextStyle(
+              fontSize: 11,
+              height: 1.35,
+              color: Colors.blueGrey[700],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildKecamatanListSheet(
+    String label,
+    Color color,
+    List<String> list,
+  ) {
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 12),
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                Icon(Icons.location_on_outlined, color: color),
+                const SizedBox(width: 8),
+                Text(
+                  'Kecamatan $label',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 30),
+          Flexible(
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: list.length,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemBuilder: (ctx, i) {
+                return ListTile(
+                  dense: true,
+                  leading: CircleAvatar(
+                    backgroundColor: color.withValues(alpha: 0.1),
+                    radius: 12,
+                    child: Text(
+                      '${i + 1}',
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  title: Text(
+                    list[i],
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
     );
   }
 
@@ -411,59 +508,64 @@ class _HomePage extends StatelessWidget {
   }
 
   Widget _buildMenuGrid(BuildContext context) {
-    final menus = [
-      {
-        'icon': Icons.trending_up,
-        'label': 'Harga\nKomoditas',
-        'color': const Color(0xFF1976D2),
-        'index': 1,
-      },
-      {
-        'icon': Icons.inventory_2,
-        'label': 'Stok\nPangan',
-        'color': const Color(0xFFF57C00),
-        'index': 2,
-      },
-      {
-        'icon': Icons.local_shipping,
-        'label': 'Distribusi\nPangan',
-        'color': const Color(0xFF2E7D32),
-        'index': 3,
-      },
-      {
-        'icon': Icons.warning_amber_rounded,
-        'label': 'Laporan\nDarurat',
-        'color': const Color(0xFFD32F2F),
-        'index': 4,
-      },
-      {
-        'icon': Icons.map_outlined,
-        'label': 'Peta\nSebaran',
-        'color': const Color(0xFF00838F),
-        'index': -1,
-      },
-      {
-        'icon': Icons.bar_chart_outlined,
-        'label': 'Analitik\nPangan',
-        'color': const Color(0xFF7B1FA2),
-        'index': -3,
-      },
-      {
-        'icon': Icons.auto_graph_outlined,
-        'label': 'Prediksi\nHarga',
-        'color': const Color(0xFF512DA8),
-        'index': -4,
-      },
-    ];
+    final role = _currentRole(context);
+    final isPrivileged = _isPrivilegedRole(role);
+    final menus = isPrivileged
+        ? [
+            {
+              'icon': Icons.bar_chart_outlined,
+              'label': 'Analitik\nPangan',
+              'color': const Color(0xFF7B1FA2),
+              'index': -3,
+            },
+            {
+              'icon': Icons.auto_graph_outlined,
+              'label': 'Prediksi\nHarga',
+              'color': const Color(0xFF512DA8),
+              'index': -4,
+            },
+            {
+              'icon': Icons.map_outlined,
+              'label': 'Peta\nSebaran',
+              'color': const Color(0xFF00838F),
+              'index': -1,
+            },
+          ]
+        : [
+            {
+              'icon': Icons.inventory_2,
+              'label': 'Stok\nPangan',
+              'color': const Color(0xFFF57C00),
+              'index': 2,
+            },
+            {
+              'icon': Icons.bar_chart_outlined,
+              'label': 'Analitik\nPangan',
+              'color': const Color(0xFF7B1FA2),
+              'index': -3,
+            },
+            {
+              'icon': Icons.auto_graph_outlined,
+              'label': 'Prediksi\nHarga',
+              'color': const Color(0xFF512DA8),
+              'index': -4,
+            },
+            {
+              'icon': Icons.map_outlined,
+              'label': 'Peta\nSebaran',
+              'color': const Color(0xFF00838F),
+              'index': -1,
+            },
+          ];
 
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 4,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: isPrivileged ? 3 : 3,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
-        childAspectRatio: 0.85,
+        childAspectRatio: isPrivileged ? 1.0 : 0.95,
       ),
       itemCount: menus.length,
       itemBuilder: (context, idx) {
@@ -563,13 +665,13 @@ class _HomePage extends StatelessWidget {
             final Color color = prioritasKritis
                 ? const Color(0xFFC62828)
                 : prioritasSedang
-                ? const Color(0xFFF57C00)
-                : const Color(0xFF1976D2);
+                    ? const Color(0xFFF57C00)
+                    : const Color(0xFF1976D2);
             final Color bg = prioritasKritis
                 ? const Color(0xFFFFEBEE)
                 : prioritasSedang
-                ? const Color(0xFFFFF3E0)
-                : const Color(0xFFE3F2FD);
+                    ? const Color(0xFFFFF3E0)
+                    : const Color(0xFFE3F2FD);
 
             return Container(
               margin: const EdgeInsets.only(bottom: 10),
@@ -616,7 +718,7 @@ class _HomePage extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          'Kec. ${alert.kecamatanNama} • Prioritas ${alert.prioritas}',
+                          'Kec. ${alert.kecamatanNama} â€¢ Prioritas ${alert.prioritas}',
                           style: TextStyle(
                             fontSize: 11,
                             color: Colors.grey[600],
@@ -634,427 +736,3 @@ class _HomePage extends StatelessWidget {
     );
   }
 }
-
-// ── Selectable Line Chart Card ────────────────────────────────────────────────
-class _ChartCardWidget extends StatefulWidget {
-  final AnalyticsState state;
-  const _ChartCardWidget({required this.state});
-
-  @override
-  State<_ChartCardWidget> createState() => _ChartCardWidgetState();
-}
-
-class _ChartCardWidgetState extends State<_ChartCardWidget> {
-  int _selectedIdx = 0;
-  String _selectedPeriod = '7d';
-
-  static const Map<String, String> _periodeOptions = {
-    '7d': '7 Hari',
-    '30d': '30 Hari',
-    '90d': '90 Hari',
-  };
-
-  static const _komoditas = [
-    {'nama': 'Beras', 'emoji': '🌾', 'color': Color(0xFF2E7D32)},
-    {'nama': 'Jagung', 'emoji': '🌽', 'color': Color(0xFFF9A825)},
-    {'nama': 'Kedelai', 'emoji': '🫘', 'color': Color(0xFF795548)},
-    {'nama': 'Cabai', 'emoji': '🌶️', 'color': Color(0xFFC62828)},
-    {'nama': 'Gula', 'emoji': '🍚', 'color': Color(0xFF1976D2)},
-    {'nama': 'Minyak', 'emoji': '🫙', 'color': Color(0xFFF57C00)},
-  ];
-
-  List<double> _getData(DashboardStats? s) {
-    if (s == null) return List.filled(7, 0.0);
-    switch (_selectedIdx) {
-      case 0:
-        return s.harga7HariBeras;
-      case 1:
-        return s.harga7HariJagung;
-      case 2:
-        return s.harga7HariKedelai;
-      case 3:
-        return s.harga7HariCabai;
-      case 4:
-        return s.harga7HariGula;
-      case 5:
-        return s.harga7HariMinyak;
-      default:
-        return List.filled(7, 0.0);
-    }
-  }
-
-  String _formatCompact(double value) {
-    if (value >= 1000000) {
-      return '${(value / 1000000).toStringAsFixed(1)}jt';
-    }
-    if (value >= 1000) {
-      final rb = value / 1000;
-      final isRound = (rb - rb.roundToDouble()).abs() < 0.05;
-      return isRound ? '${rb.round()}rb' : '${rb.toStringAsFixed(1)}rb';
-    }
-    return value.toStringAsFixed(0);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final state = widget.state;
-    final s = state is AnalyticsLoaded ? state.stats : null;
-    final color = _komoditas[_selectedIdx]['color'] as Color;
-    final data = _getData(s);
-    final labels = s?.tanggalLabels ?? const [];
-    final axisLabels = labels.isEmpty
-        ? List<String>.generate(data.length, (i) => 'H${i + 1}')
-        : labels;
-    final showEvery =
-        axisLabels.length > 10 ? (axisLabels.length / 6).ceil() : 1;
-    final spots = data
-        .asMap()
-        .entries
-        .where((e) => e.value > 0)
-        .map((e) => FlSpot(e.key.toDouble(), e.value))
-        .toList();
-
-    final values = spots.map((e) => e.y).toList();
-    final minRaw = values.isEmpty ? 0.0 : values.reduce(math.min);
-    final maxRaw = values.isEmpty ? 1.0 : values.reduce(math.max);
-    final span = (maxRaw - minRaw).abs();
-    final padding = span > 0 ? span * 0.18 : (maxRaw > 0 ? maxRaw * 0.08 : 1.0);
-    final chartMinY = math.max(0.0, minRaw - padding).toDouble();
-    final chartMaxY = (maxRaw + padding).toDouble();
-    final yInterval =
-      ((chartMaxY - chartMinY) / 4).clamp(1, double.infinity).toDouble();
-
-    // Hitung persentase kenaikan/penurunan (Data terbaru vs Data terlama di chart)
-    double? percentChange;
-    if (spots.length >= 2) {
-      final firstVal = spots.first.y;
-      final lastVal = spots.last.y;
-      if (firstVal > 0) {
-        percentChange = ((lastVal - firstVal) / firstVal) * 100;
-      }
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-               Expanded(
-                 child: Row(
-                   children: [
-                     const Text(
-                       'Harga Komoditas',
-                       style: TextStyle(
-                         fontSize: 13,
-                         fontWeight: FontWeight.w700,
-                         color: Color(0xFF212121),
-                       ),
-                     ),
-                     if (percentChange != null) ...[
-                       const SizedBox(width: 8),
-                       Container(
-                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                         decoration: BoxDecoration(
-                           color: percentChange > 0 ? Colors.red[50] : (percentChange < 0 ? Colors.green[50] : Colors.grey[100]),
-                           borderRadius: BorderRadius.circular(4),
-                         ),
-                         child: Row(
-                           children: [
-                             Icon(
-                               percentChange > 0 ? Icons.trending_up : (percentChange < 0 ? Icons.trending_down : Icons.trending_flat),
-                               size: 10,
-                               color: percentChange > 0 ? Colors.red[700] : (percentChange < 0 ? Colors.green[700] : Colors.grey[700]),
-                             ),
-                             const SizedBox(width: 2),
-                             Text(
-                               '${percentChange.abs().toStringAsFixed(1)}%',
-                               style: TextStyle(
-                                 fontSize: 10,
-                                 fontWeight: FontWeight.w700,
-                                 color: percentChange > 0 ? Colors.red[700] : (percentChange < 0 ? Colors.green[700] : Colors.grey[700]),
-                               ),
-                             ),
-                           ],
-                         ),
-                       ),
-                     ],
-                   ],
-                 ),
-               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _selectedPeriod,
-                    icon: const Icon(Icons.keyboard_arrow_down, size: 16),
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF424242),
-                    ),
-                    items: _periodeOptions.entries
-                        .map(
-                          (e) => DropdownMenuItem<String>(
-                            value: e.key,
-                            child: Text(e.value),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (value) {
-                      if (value == null || value == _selectedPeriod) {
-                        return;
-                      }
-                      setState(() => _selectedPeriod = value);
-                      context
-                          .read<AnalyticsBloc>()
-                          .add(LoadDashboardStats(periode: value));
-                    },
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          // Commodity chip selector
-          SizedBox(
-            height: 28,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: _komoditas.length,
-              itemBuilder: (_, i) {
-                final isSelected = _selectedIdx == i;
-                final c = _komoditas[i]['color'] as Color;
-                return GestureDetector(
-                  onTap: () => setState(() => _selectedIdx = i),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.only(right: 6),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: isSelected ? c : Colors.grey[100],
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '${_komoditas[i]['emoji']} ${_komoditas[i]['nama']}',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: isSelected ? Colors.white : Colors.grey[600],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 12),
-          // Chart area
-          if (state is AnalyticsLoading)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 40),
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            )
-          else if (spots.isEmpty)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 32),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.bar_chart_outlined,
-                      size: 40,
-                      color: Colors.grey[300],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Belum ada data harga',
-                      style: TextStyle(color: Colors.grey[400], fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          else
-            SizedBox(
-              height: 150,
-              child: LineChart(
-                LineChartData(
-                  minX: 0,
-                  maxX: (axisLabels.length - 1).toDouble(),
-                  minY: chartMinY,
-                  maxY: chartMaxY,
-                  lineTouchData: LineTouchData(
-                    handleBuiltInTouches: true,
-                    touchTooltipData: LineTouchTooltipData(
-                      getTooltipColor: (_) => const Color(0xFF1E293B).withValues(alpha: 0.9),
-                      tooltipRoundedRadius: 10,
-                      fitInsideHorizontally: true,
-                      tooltipBorder: const BorderSide(color: Colors.white24, width: 1),
-                      getTooltipItems: (touchedSpots) {
-                        return touchedSpots.map((spot) {
-                          final idx = spot.x.toInt();
-                          final label = (idx >= 0 && idx < axisLabels.length)
-                              ? axisLabels[idx]
-                              : '';
-                          return LineTooltipItem(
-                            '$label\n',
-                            const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            children: [
-                              TextSpan(
-                                text: 'Rp ${_formatCompact(spot.y)}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ],
-                          );
-                        }).toList();
-                      },
-                    ),
-                  ),
-                  gridData: FlGridData(
-                    show: true,
-                    drawVerticalLine: true,
-                    getDrawingHorizontalLine: (_) => FlLine(
-                      color: Colors.grey.withValues(alpha: 0.15),
-                      strokeWidth: 1,
-                      dashArray: [4, 4],
-                    ),
-                    getDrawingVerticalLine: (_) => FlLine(
-                      color: Colors.grey.withValues(alpha: 0.15),
-                      strokeWidth: 1,
-                      dashArray: [4, 4],
-                    ),
-                  ),
-                  titlesData: FlTitlesData(
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 42,
-                        interval: yInterval,
-                        getTitlesWidget: (v, meta) {
-                          if (v == meta.max || v == meta.min) {
-                            return const SizedBox.shrink();
-                          }
-                          return Text(
-                            _formatCompact(v),
-                            style: const TextStyle(
-                              fontSize: 9, 
-                              color: Colors.grey,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    rightTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),),
-                    topTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        interval: 1,
-                        getTitlesWidget: (v, meta) {
-                          final idx = v.toInt();
-                          if (idx < 0 || idx >= axisLabels.length) {
-                            return const SizedBox();
-                          }
-                          if (idx % showEvery != 0 &&
-                              idx != axisLabels.length - 1) {
-                            return const SizedBox();
-                          }
-                          return Text(
-                            axisLabels[idx],
-                            style: const TextStyle(
-                                fontSize: 9, color: Colors.grey,),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  borderData: FlBorderData(
-                    show: true,
-                    border: Border(
-                      left: BorderSide(color: Colors.grey.withValues(alpha: 0.25)),
-                      bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.25)),
-                    ),
-                  ),
-                  lineBarsData: [
-                    LineChartBarData(
-                      spots: spots,
-                      isCurved: true,
-                      preventCurveOverShooting: true,
-                      color: color,
-                      barWidth: 3,
-                      isStrokeCapRound: true,
-                      shadow: BoxShadow(
-                        color: color.withValues(alpha: 0.3),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                      belowBarData: BarAreaData(
-                        show: true,
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            color.withValues(alpha: 0.35),
-                            color.withValues(alpha: 0.0),
-                          ],
-                        ),
-                      ),
-                      dotData: FlDotData(
-                        show: true,
-                        getDotPainter: (spot, percent, barData, index) {
-                          // Show dots only on endpoints or every data point if few
-                          if (spots.length > 30 && index % 3 != 0 && index != spots.length - 1 && index != 0) {
-                            return FlDotCirclePainter(radius: 0, color: Colors.transparent, strokeWidth: 0);
-                          }
-                          return FlDotCirclePainter(
-                            radius: 3.5,
-                            color: Colors.white,
-                            strokeWidth: 2,
-                            strokeColor: color,
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-

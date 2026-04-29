@@ -1,3 +1,8 @@
+// Penjelasan file:
+// Feature: laporan
+// Layer: ui
+// File: laporan_sheet
+// Fungsi utama: File ini mengatur tampilan halaman, komponen visual, dan interaksi pengguna.
 part of '../pages/laporan_page.dart';
 
 class _TabBarDelegate extends SliverPersistentHeaderDelegate {
@@ -21,7 +26,7 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
   bool shouldRebuild(_TabBarDelegate oldDelegate) => false;
 }
 
-// ── Create Laporan Sheet ──────────────────────────────────
+// â”€â”€ Create Laporan Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _CreateLaporanSheet extends StatefulWidget {
   const _CreateLaporanSheet();
 
@@ -242,4 +247,3 @@ class _CreateLaporanSheetState extends State<_CreateLaporanSheet> {
     Navigator.of(ctx).pop();
   }
 }
-

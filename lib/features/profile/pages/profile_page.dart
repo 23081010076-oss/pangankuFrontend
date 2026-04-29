@@ -1,3 +1,8 @@
+// Penjelasan file:
+// Feature: profile
+// Layer: ui
+// File: profile_page
+// Fungsi utama: File ini mengatur tampilan halaman, komponen visual, dan interaksi pengguna.
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -55,7 +60,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         : null;
 
         final authState = ctx.read<AuthBloc>().state;
-        final role = authState is AuthAuthenticated ? authState.role : 'publik';
+        final role = authState is AuthAuthenticated ? authState.role : 'petani';
 
         return Scaffold(
           backgroundColor: const Color(0xFFF5F7FA),
@@ -106,7 +111,9 @@ class _ProfilePageState extends State<ProfilePage> {
           colors: [Color(0xFF1B5E20), Color(0xFF2E7D32), Color(0xFF43A047)],
         ),
         borderRadius: BorderRadius.only(
-            bottomLeft: Radius.circular(32), bottomRight: Radius.circular(32),),
+          bottomLeft: Radius.circular(32),
+          bottomRight: Radius.circular(32),
+        ),
       ),
       child: SafeArea(
         child: Padding(
@@ -175,6 +182,8 @@ class _ProfilePageState extends State<ProfilePage> {
       child: Column(
         children: [
           const SizedBox(height: 16),
+          _quickAccessCard(ctx, role),
+          const SizedBox(height: 16),
           _menuCard([
             _MenuItem(
               icon: Icons.person_outline,
@@ -226,6 +235,11 @@ class _ProfilePageState extends State<ProfilePage> {
                 label: 'Kelola Harga',
                 onTap: () => ctx.push('/admin/harga'),
               ),
+              _MenuItem(
+                icon: Icons.landscape_outlined,
+                label: 'Kelola Luas Lahan',
+                onTap: () => ctx.push('/admin/luas-lahan'),
+              ),
             ]),
             const SizedBox(height: 16),
           ],
@@ -269,16 +283,125 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  Widget _quickAccessCard(BuildContext ctx, String role) {
+    final isAdmin = role == 'admin' || role == 'petugas';
+    final actions = <_MenuItem>[
+      _MenuItem(
+        icon: Icons.bar_chart_outlined,
+        label: 'Analitik',
+        onTap: () => ctx.push('/analytics'),
+      ),
+      _MenuItem(
+        icon: Icons.receipt_long_outlined,
+        label: 'Laporan',
+        onTap: () => ctx.push('/laporan'),
+      ),
+      _MenuItem(
+        icon: Icons.notifications_outlined,
+        label: 'Notifikasi',
+        onTap: () => ctx.push('/notifikasi'),
+      ),
+    ];
+
+    if (isAdmin) {
+      actions.insert(
+        0,
+        _MenuItem(
+          icon: Icons.landscape_outlined,
+          label: 'Luas Lahan',
+          onTap: () => ctx.push('/admin/luas-lahan'),
+        ),
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Akses Cepat',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF263238),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            isAdmin
+                ? 'Masuk ke halaman yang paling sering dipakai untuk operasional.'
+                : 'Akses cepat ke fitur utama aplikasi.',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: actions.map((item) {
+              return InkWell(
+                onTap: item.onTap,
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF5F7FA),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(item.icon, size: 16, color: const Color(0xFF2E7D32)),
+                      const SizedBox(width: 8),
+                      Text(
+                        item.label,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF263238),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _sectionLabel(String label) {
     return Align(
       alignment: Alignment.centerLeft,
       child: Text(
         label,
         style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF757575),
-            letterSpacing: 0.5,),
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF757575),
+          letterSpacing: 0.5,
+        ),
       ),
     );
   }
@@ -473,7 +596,7 @@ class _ProfilePageState extends State<ProfilePage> {
       case 'petani':
         return 'Petani';
       default:
-        return 'Publik';
+        return 'Petani';
     }
   }
 }
@@ -489,7 +612,7 @@ class _MenuItem {
   });
 }
 
-// ── Edit Profil Sheet ────────────────────────────────────
+// â”€â”€ Edit Profil Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _EditProfilSheet extends StatefulWidget {
   final dynamic profile;
   const _EditProfilSheet({required this.profile});
@@ -674,7 +797,7 @@ class _EditProfilSheetState extends State<_EditProfilSheet> {
   }
 }
 
-// ── Change Password Sheet ─────────────────────────────────
+// â”€â”€ Change Password Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _ChangePasswordSheet extends StatefulWidget {
   const _ChangePasswordSheet();
 

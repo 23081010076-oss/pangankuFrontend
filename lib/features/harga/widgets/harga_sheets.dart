@@ -1,3 +1,8 @@
+// Penjelasan file:
+// Feature: harga
+// Layer: ui
+// File: harga_sheets
+// Fungsi utama: File ini mengatur tampilan halaman, komponen visual, dan interaksi pengguna.
 part of '../pages/harga_page.dart';
 
 class _HargaDetailSheet extends StatefulWidget {
@@ -214,156 +219,227 @@ class _HargaDetailSheetState extends State<_HargaDetailSheet> {
     final allY = data.map((d) => d.avg).toList();
     final minY = (allY.reduce((a, b) => a < b ? a : b)) * 0.97;
     final maxY = (allY.reduce((a, b) => a > b ? a : b)) * 1.03;
+    final avgY = allY.reduce((a, b) => a + b) / allY.length;
+    final delta = allY.last - allY.first;
 
-    return SizedBox(
-      height: 200,
-      child: LineChart(
-        LineChartData(
-          lineTouchData: LineTouchData(
-            handleBuiltInTouches: true,
-            touchTooltipData: LineTouchTooltipData(
-              getTooltipColor: (_) => const Color(0xFF1E293B).withValues(alpha: 0.9),
-              tooltipRoundedRadius: 10,
-              fitInsideHorizontally: true,
-              tooltipBorder: const BorderSide(color: Colors.white24, width: 1),
-              getTooltipItems: (touchedSpots) {
-                return touchedSpots.map((spot) {
-                  final idx = spot.x.toInt();
-                  if (idx < 0 || idx >= data.length) return null;
-                  final dt = DateTime.tryParse(data[idx].tanggal);
-                  final label = dt != null ? DateFormat('dd/MM').format(dt) : '';
-                  return LineTooltipItem(
-                    '$label\n',
-                    const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    children: [
-                      TextSpan(
-                        text: 'Rp ${NumberFormat('#,###', 'id_ID').format(spot.y)}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  );
-                }).toList();
-              },
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _sheetMetricChip(
+              'Rata-rata Rp ${NumberFormat('#,###', 'id_ID').format(avgY)}',
+              const Color(0xFF2E7D32),
             ),
-          ),
-          gridData: FlGridData(
-            show: true,
-            drawVerticalLine: true,
-            horizontalInterval: (maxY - minY) / 4,
-            getDrawingHorizontalLine: (_) => FlLine(
-              color: Colors.grey.withValues(alpha: 0.15),
-              strokeWidth: 1,
-              dashArray: [4, 4],
-            ),
-            getDrawingVerticalLine: (_) => FlLine(
-              color: Colors.grey.withValues(alpha: 0.15),
-              strokeWidth: 1,
-              dashArray: [4, 4],
-            ),
-          ),
-          titlesData: FlTitlesData(
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 42,
-                getTitlesWidget: (v, meta) {
-                  if (v == meta.max || v == meta.min) {
-                    return const SizedBox.shrink();
-                  }
-                  return Text(
-                    '${(v / 1000).toStringAsFixed(0)}rb',
-                    style: const TextStyle(
-                      fontSize: 9, 
-                      color: Colors.grey,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  );
-                },
-              ),
-            ),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                interval: (data.length / 5).ceilToDouble(),
-                getTitlesWidget: (v, _) {
-                  final idx = v.toInt();
-                  if (idx < 0 || idx >= data.length) return const SizedBox();
-                  final dt = DateTime.tryParse(data[idx].tanggal);
-                  if (dt == null) return const SizedBox();
-                  return Text(
-                    DateFormat('dd/MM').format(dt),
-                    style: const TextStyle(fontSize: 8, color: Colors.grey),
-                  );
-                },
-              ),
-            ),
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-          ),
-          borderData: FlBorderData(show: false),
-          minX: 0,
-          maxX: (spots.length - 1).toDouble(),
-          minY: minY,
-          maxY: maxY,
-          lineBarsData: [
-            LineChartBarData(
-              spots: spots,
-              isCurved: true,
-              preventCurveOverShooting: true,
-              color: const Color(0xFF2E7D32),
-              barWidth: 3,
-              isStrokeCapRound: true,
-              shadow: BoxShadow(
-                color: const Color(0xFF2E7D32).withValues(alpha: 0.3),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-              belowBarData: BarAreaData(
-                show: true,
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    const Color(0xFF2E7D32).withValues(alpha: 0.35),
-                    const Color(0xFF2E7D32).withValues(alpha: 0.0),
-                  ],
-                ),
-              ),
-              dotData: FlDotData(
-                show: true,
-                getDotPainter: (spot, percent, barData, index) {
-                  if (spots.length > 30 && index % 3 != 0 && index != spots.length - 1 && index != 0) {
-                    return FlDotCirclePainter(radius: 0, color: Colors.transparent, strokeWidth: 0);
-                  }
-                  return FlDotCirclePainter(
-                    radius: 3.5,
-                    color: Colors.white,
-                    strokeWidth: 2,
-                    strokeColor: const Color(0xFF2E7D32),
-                  );
-                },
-              ),
+            _sheetMetricChip(
+              '${delta >= 0 ? 'Naik' : 'Turun'} Rp ${NumberFormat('#,###', 'id_ID').format(delta.abs())}',
+              delta >= 0 ? const Color(0xFFC62828) : const Color(0xFF1565C0),
             ),
           ],
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 220,
+          child: LineChart(
+            LineChartData(
+              minX: 0,
+              maxX: (spots.length - 1).toDouble(),
+              minY: minY,
+              maxY: maxY,
+              clipData: const FlClipData.all(),
+              extraLinesData: ExtraLinesData(
+                horizontalLines: [
+                  HorizontalLine(
+                    y: avgY,
+                    color: const Color(0xFF2E7D32).withValues(alpha: 0.35),
+                    strokeWidth: 1.1,
+                    dashArray: [5, 5],
+                  ),
+                ],
+              ),
+              lineTouchData: LineTouchData(
+                handleBuiltInTouches: true,
+                touchTooltipData: LineTouchTooltipData(
+                  getTooltipColor: (_) =>
+                      const Color(0xFF1E293B).withValues(alpha: 0.9),
+                  tooltipRoundedRadius: 10,
+                  fitInsideHorizontally: true,
+                  tooltipBorder:
+                      const BorderSide(color: Colors.white24, width: 1),
+                  getTooltipItems: (touchedSpots) {
+                    return touchedSpots.map((spot) {
+                      final idx = spot.x.toInt();
+                      if (idx < 0 || idx >= data.length) return null;
+                      final dt = DateTime.tryParse(data[idx].tanggal);
+                      final label =
+                          dt != null ? DateFormat('dd/MM').format(dt) : '';
+                      return LineTooltipItem(
+                        '$label\n',
+                        const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        children: [
+                          TextSpan(
+                            text:
+                                'Rp ${NumberFormat('#,###', 'id_ID').format(spot.y)}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      );
+                    }).toList();
+                  },
+                ),
+              ),
+              gridData: FlGridData(
+                show: true,
+                drawVerticalLine: false,
+                horizontalInterval: (maxY - minY) / 4,
+                getDrawingHorizontalLine: (_) => FlLine(
+                  color: Colors.grey.withValues(alpha: 0.15),
+                  strokeWidth: 1,
+                  dashArray: [4, 4],
+                ),
+              ),
+              titlesData: FlTitlesData(
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 42,
+                    getTitlesWidget: (v, meta) {
+                      if (v == meta.max || v == meta.min) {
+                        return const SizedBox.shrink();
+                      }
+                      return Text(
+                        '${(v / 1000).toStringAsFixed(0)}rb',
+                        style: const TextStyle(
+                          fontSize: 9,
+                          color: Colors.grey,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    interval: (data.length / 5).ceilToDouble(),
+                    reservedSize: 26,
+                    getTitlesWidget: (v, _) {
+                      final idx = v.toInt();
+                      if (idx < 0 || idx >= data.length) {
+                        return const SizedBox();
+                      }
+                      final dt = DateTime.tryParse(data[idx].tanggal);
+                      if (dt == null) return const SizedBox();
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          DateFormat('dd/MM').format(dt),
+                          style:
+                              const TextStyle(fontSize: 8, color: Colors.grey),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                topTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  left: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+                  bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
+                ),
+              ),
+              lineBarsData: [
+                LineChartBarData(
+                  spots: spots,
+                  isCurved: true,
+                  preventCurveOverShooting: true,
+                  color: const Color(0xFF2E7D32),
+                  barWidth: 3,
+                  isStrokeCapRound: true,
+                  shadow: BoxShadow(
+                    color: const Color(0xFF2E7D32).withValues(alpha: 0.3),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                  belowBarData: BarAreaData(
+                    show: true,
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        const Color(0xFF2E7D32).withValues(alpha: 0.35),
+                        const Color(0xFF2E7D32).withValues(alpha: 0.0),
+                      ],
+                    ),
+                  ),
+                  dotData: FlDotData(
+                    show: true,
+                    getDotPainter: (spot, percent, barData, index) {
+                      if (spots.length > 30 &&
+                          index % 3 != 0 &&
+                          index != spots.length - 1 &&
+                          index != 0) {
+                        return FlDotCirclePainter(
+                          radius: 0,
+                          color: Colors.transparent,
+                          strokeWidth: 0,
+                        );
+                      }
+                      final isEdge = index == 0 || index == spots.length - 1;
+                      return FlDotCirclePainter(
+                        radius: isEdge ? 4.2 : 3.2,
+                        color: isEdge ? const Color(0xFF2E7D32) : Colors.white,
+                        strokeWidth: 2,
+                        strokeColor: const Color(0xFF2E7D32),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _sheetMetricChip(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: color,
         ),
       ),
     );
   }
 }
 
-// ── Tambah Harga Sheet ────────────────────────────────────
+// â”€â”€ Tambah Harga Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _TambahHargaSheet extends StatefulWidget {
   const _TambahHargaSheet();
 
@@ -626,4 +702,3 @@ class _TambahHargaSheetState extends State<_TambahHargaSheet> {
     Navigator.of(ctx).pop();
   }
 }
-

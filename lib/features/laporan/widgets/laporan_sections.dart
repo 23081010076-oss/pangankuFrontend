@@ -1,3 +1,8 @@
+// Penjelasan file:
+// Feature: laporan
+// Layer: ui
+// File: laporan_sections
+// Fungsi utama: File ini mengatur tampilan halaman, komponen visual, dan interaksi pengguna.
 part of '../pages/laporan_page.dart';
 
 extension _LaporanPageSections on _LaporanPageState {
@@ -18,8 +23,11 @@ extension _LaporanPageSections on _LaporanPageState {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.error_outline,
-                    size: 48, color: Color(0xFFEF5350),),
+                const Icon(
+                  Icons.error_outline,
+                  size: 48,
+                  color: Color(0xFFEF5350),
+                ),
                 const SizedBox(height: 12),
                 Text(
                   state.message,

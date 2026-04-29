@@ -1,3 +1,8 @@
+// Penjelasan file:
+// Feature: admin
+// Layer: ui
+// File: kecamatan_admin_page
+// Fungsi utama: File ini mengatur tampilan halaman, komponen visual, dan interaksi pengguna.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:dio/dio.dart';
@@ -44,7 +49,11 @@ class _KecamatanAdminPageState extends State<KecamatanAdminPage> {
   }
 
   Future<void> _create(
-      String nama, double lat, double lng, double luasHa,) async {
+    String nama,
+    double lat,
+    double lng,
+    double luasHa,
+  ) async {
     try {
       await _repository.createKecamatan(
         nama: nama,
@@ -63,7 +72,12 @@ class _KecamatanAdminPageState extends State<KecamatanAdminPage> {
   }
 
   Future<void> _update(
-      String id, String nama, double lat, double lng, double luasHa,) async {
+    String id,
+    String nama,
+    double lat,
+    double lng,
+    double luasHa,
+  ) async {
     try {
       await _repository.updateKecamatan(
         id: id,
@@ -88,11 +102,13 @@ class _KecamatanAdminPageState extends State<KecamatanAdminPage> {
       builder: (ctx) => AlertDialog(
         title: const Text('Hapus Kecamatan'),
         content: Text(
-            'Hapus "$nama"? Data stok dan harga terkait juga dapat terpengaruh.',),
+          'Hapus "$nama"? Data stok dan harga terkait juga dapat terpengaruh.',
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Batal'),),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Batal'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Hapus', style: TextStyle(color: Colors.red)),
@@ -116,22 +132,25 @@ class _KecamatanAdminPageState extends State<KecamatanAdminPage> {
 
   void _showSnack(String msg, {bool isError = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg),
-      backgroundColor: isError ? Colors.red[700] : const Color(0xFF2E7D32),
-    ),);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: isError ? Colors.red[700] : const Color(0xFF2E7D32),
+      ),
+    );
   }
 
   void _showForm({Map<String, dynamic>? existing}) {
     final namaCtrl = TextEditingController(text: existing?['nama'] ?? '');
     final latCtrl = TextEditingController(
-        text: existing?['lat'] != null ? existing!['lat'].toString() : '',);
+      text: existing?['lat'] != null ? existing!['lat'].toString() : '',
+    );
     final lngCtrl = TextEditingController(
-        text: existing?['lng'] != null ? existing!['lng'].toString() : '',);
+      text: existing?['lng'] != null ? existing!['lng'].toString() : '',
+    );
     final luasCtrl = TextEditingController(
-        text: existing?['luas_ha'] != null
-            ? existing!['luas_ha'].toString()
-            : '',);
+      text: existing?['luas_ha'] != null ? existing!['luas_ha'].toString() : '',
+    );
     final isEdit = existing != null;
     final formKey = GlobalKey<FormState>();
 
@@ -159,7 +178,9 @@ class _KecamatanAdminPageState extends State<KecamatanAdminPage> {
                 Text(
                   isEdit ? 'Edit Kecamatan' : 'Tambah Kecamatan',
                   style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.w700,),
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -172,31 +193,43 @@ class _KecamatanAdminPageState extends State<KecamatanAdminPage> {
                       (v?.trim().isEmpty ?? true) ? 'Nama wajib diisi' : null,
                 ),
                 const SizedBox(height: 12),
-                Row(children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: latCtrl,
-                      decoration: const InputDecoration(labelText: 'Latitude'),
-                      keyboardType: const TextInputType.numberWithOptions(
-                          signed: true, decimal: true,),
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.\-]')),
-                      ],
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: latCtrl,
+                        decoration:
+                            const InputDecoration(labelText: 'Latitude'),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          signed: true,
+                          decimal: true,
+                        ),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'[0-9.\-]'),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TextFormField(
-                      controller: lngCtrl,
-                      decoration: const InputDecoration(labelText: 'Longitude'),
-                      keyboardType: const TextInputType.numberWithOptions(
-                          signed: true, decimal: true,),
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.\-]')),
-                      ],
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextFormField(
+                        controller: lngCtrl,
+                        decoration:
+                            const InputDecoration(labelText: 'Longitude'),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          signed: true,
+                          decimal: true,
+                        ),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'[0-9.\-]'),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],),
+                  ],
+                ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: luasCtrl,
@@ -222,8 +255,13 @@ class _KecamatanAdminPageState extends State<KecamatanAdminPage> {
                         final lng = double.tryParse(lngCtrl.text) ?? 0.0;
                         final luas = double.tryParse(luasCtrl.text) ?? 0.0;
                         if (isEdit) {
-                          _update(existing['id'].toString(),
-                              namaCtrl.text.trim(), lat, lng, luas,);
+                          _update(
+                            existing['id'].toString(),
+                            namaCtrl.text.trim(),
+                            lat,
+                            lng,
+                            luas,
+                          );
                         } else {
                           _create(namaCtrl.text.trim(), lat, lng, luas);
                         }
@@ -233,7 +271,8 @@ class _KecamatanAdminPageState extends State<KecamatanAdminPage> {
                       backgroundColor: const Color(0xFF2E7D32),
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     child: Text(isEdit ? 'Simpan Perubahan' : 'Tambahkan'),
                   ),
@@ -280,15 +319,19 @@ class _KecamatanAdminPageState extends State<KecamatanAdminPage> {
           if (_loading)
             const SliverFillRemaining(
               child: Center(
-                  child: CircularProgressIndicator(color: Color(0xFF2E7D32)),),
+                child: CircularProgressIndicator(color: Color(0xFF2E7D32)),
+              ),
             )
           else if (_error != null)
             SliverFillRemaining(child: _buildError())
           else if (_list.isEmpty)
             const SliverFillRemaining(
               child: Center(
-                  child: Text('Belum ada kecamatan',
-                      style: TextStyle(color: Colors.grey),),),
+                child: Text(
+                  'Belum ada kecamatan',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ),
             )
           else
             SliverPadding(
@@ -319,9 +362,10 @@ class _KecamatanAdminPageState extends State<KecamatanAdminPage> {
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 6,
-              offset: const Offset(0, 2),),
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: ListTile(
@@ -333,27 +377,38 @@ class _KecamatanAdminPageState extends State<KecamatanAdminPage> {
             color: const Color(0xFFE8F5E9),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: const Icon(Icons.location_on_outlined,
-              color: Color(0xFF2E7D32), size: 22,),
+          child: const Icon(
+            Icons.location_on_outlined,
+            color: Color(0xFF2E7D32),
+            size: 22,
+          ),
         ),
-        title: Text(nama,
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),),
+        title: Text(
+          nama,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+        ),
         subtitle: Text(
-          'Lat ${lat.toStringAsFixed(4)} · Lng ${lng.toStringAsFixed(4)}${luas > 0 ? ' · ${luas.toStringAsFixed(0)} ha' : ''}',
+          'Lat ${lat.toStringAsFixed(4)} Â· Lng ${lng.toStringAsFixed(4)}${luas > 0 ? ' Â· ${luas.toStringAsFixed(0)} ha' : ''}',
           style: const TextStyle(fontSize: 11, color: Colors.grey),
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
-              icon: const Icon(Icons.edit_outlined,
-                  size: 20, color: Color(0xFF2E7D32),),
+              icon: const Icon(
+                Icons.edit_outlined,
+                size: 20,
+                color: Color(0xFF2E7D32),
+              ),
               onPressed: () => _showForm(existing: item),
               tooltip: 'Edit',
             ),
             IconButton(
-              icon: const Icon(Icons.delete_outline,
-                  size: 20, color: Colors.redAccent,),
+              icon: const Icon(
+                Icons.delete_outline,
+                size: 20,
+                color: Colors.redAccent,
+              ),
               onPressed: () => _delete(id, nama),
               tooltip: 'Hapus',
             ),
@@ -370,8 +425,10 @@ class _KecamatanAdminPageState extends State<KecamatanAdminPage> {
         children: [
           const Icon(Icons.error_outline, size: 48, color: Colors.grey),
           const SizedBox(height: 12),
-          Text(_error ?? 'Terjadi kesalahan',
-              style: const TextStyle(color: Colors.grey),),
+          Text(
+            _error ?? 'Terjadi kesalahan',
+            style: const TextStyle(color: Colors.grey),
+          ),
           const SizedBox(height: 16),
           ElevatedButton.icon(
             onPressed: _loadData,

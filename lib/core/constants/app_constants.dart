@@ -1,27 +1,51 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:io' show Platform;
+// Penjelasan file:
+// Feature: core
+// Layer: core-constants
+// File: app_constants
+// Fungsi utama: File ini menyimpan konstanta global yang dipakai berulang di aplikasi.
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb;
 
+// Kumpulan konstanta global aplikasi.
+// File ini dipakai untuk nilai yang sering digunakan berulang,
+// misalnya base URL API dan key penyimpanan token/user.
 class AppConstants {
+  static const String _configuredBaseUrl =
+      String.fromEnvironment('API_BASE_URL');
+
   // Auto-detect platform untuk baseUrl yang tepat
   static String get baseUrl {
+    if (_configuredBaseUrl.isNotEmpty) {
+      return _trimTrailingSlash(_configuredBaseUrl);
+    }
+
     if (kIsWeb) {
       // Web: gunakan localhost
       return 'http://localhost:8080/api/v1';
-    } else if (Platform.isAndroid) {
-      // Emulator Android: 10.0.2.2 = host machine localhost
-      return 'http://10.0.2.2:8080/api/v1';
-    } else if (Platform.isIOS) {
-      // iOS Simulator: langsung localhost
-      return 'http://localhost:8080/api/v1';
-    } else {
-      // Desktop (Windows/Linux/macOS): localhost
-      return 'http://localhost:8080/api/v1';
+    }
+
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        // Android Emulator memakai 10.0.2.2 untuk mengarah ke host machine.
+        return 'http://10.0.2.2:8080/api/v1';
+      case TargetPlatform.iOS:
+      case TargetPlatform.macOS:
+      case TargetPlatform.windows:
+      case TargetPlatform.linux:
+      case TargetPlatform.fuchsia:
+        return 'http://localhost:8080/api/v1';
     }
   }
 
-  // Untuk production (uncomment dan ganti dengan domain production)
-  // static const String baseUrl = 'https://api.panganku.lamongan.go.id/api/v1';
+  static String _trimTrailingSlash(String value) {
+    var url = value.trim();
+    while (url.endsWith('/')) {
+      url = url.substring(0, url.length - 1);
+    }
+    return url;
+  }
 
+  // Key di bawah ini dipakai saat menyimpan data login ke secure storage.
   static const String accessTokenKey = 'access_token';
   static const String refreshTokenKey = 'refresh_token';
   static const String userRoleKey = 'user_role';

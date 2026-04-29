@@ -1,12 +1,19 @@
+// Penjelasan file:
+// Feature: laporan
+// Layer: api
+// File: laporan_repository
+// Fungsi utama: File ini mengatur komunikasi data dengan backend atau sumber data aplikasi.
 import 'package:dio/dio.dart';
 
 import '../../../core/network/dio_client.dart';
 
+// Repository ini menjadi jembatan antara fitur dan sumber data/backend.
 class LaporanRepository {
   final DioClient _client;
 
   LaporanRepository(this._client);
 
+// Method ini mengambil data dari backend lalu mengubahnya ke bentuk yang aman dipakai di aplikasi.
   Future<List<Map<String, dynamic>>> fetchLaporanList() async {
     final response = await _client.dio.get('/laporan');
     final data = response.data;
@@ -22,6 +29,7 @@ class LaporanRepository {
         .toList();
   }
 
+// Method ini mengirim request untuk menambahkan data baru ke backend.
   Future<void> createLaporan({
     required String jenisMasalah,
     required String deskripsi,
@@ -41,6 +49,7 @@ class LaporanRepository {
     );
   }
 
+// Method ini mengirim request untuk memperbarui data yang sudah ada di backend.
   Future<void> updateLaporanStatus({
     required String id,
     required String status,
@@ -48,6 +57,7 @@ class LaporanRepository {
     await _client.dio.put('/laporan/$id/status', data: {'status': status});
   }
 
+// Method ini menghapus data berdasarkan id atau identitas tertentu.
   Future<void> deleteLaporan(String id) async {
     await _client.dio.delete('/laporan/$id');
   }

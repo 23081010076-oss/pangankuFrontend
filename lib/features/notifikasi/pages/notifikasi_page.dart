@@ -1,52 +1,90 @@
+// Penjelasan file:
+// Feature: notifikasi
+// Layer: ui
+// File: notifikasi_page
+// Fungsi utama: File ini mengatur tampilan halaman, komponen visual, dan interaksi pengguna.
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import '../../../core/widgets/last_updated_badge.dart';
+import '../../../core/widgets/live_refresh.dart';
 import '../bloc/notifikasi_bloc.dart';
 import '../bloc/notifikasi_event.dart';
 import '../bloc/notifikasi_state.dart';
 
-class NotifikasiPage extends StatelessWidget {
+class NotifikasiPage extends StatefulWidget {
   const NotifikasiPage({super.key});
 
   @override
+  State<NotifikasiPage> createState() => _NotifikasiPageState();
+}
+
+class _NotifikasiPageState extends State<NotifikasiPage> {
+  DateTime? _lastUpdatedAt;
+
+  @override
   Widget build(BuildContext context) {
-    return BlocBuilder<NotifikasiBloc, NotifikasiState>(
-      builder: (context, state) {
-        final unread = state is NotifikasiLoaded ? state.unreadCount : 0;
-        return Scaffold(
-          backgroundColor: const Color(0xFFF5F7FA),
-          body: RefreshIndicator(
-            color: const Color(0xFF2E7D32),
-            onRefresh: () async =>
-                context.read<NotifikasiBloc>().add(RefreshNotifikasi()),
-            child: CustomScrollView(
-              slivers: [
-                _buildHeader(context, unread),
-                if (state is NotifikasiLoading)
-                  const SliverFillRemaining(
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        color: Color(0xFF2E7D32),
+    return LiveRefresh(
+      interval: const Duration(seconds: 15),
+      onRefresh: () async {
+        context.read<NotifikasiBloc>().add(RefreshNotifikasi());
+      },
+      child: BlocConsumer<NotifikasiBloc, NotifikasiState>(
+        listener: (context, state) {
+          if (state is NotifikasiLoaded) {
+            setState(() => _lastUpdatedAt = DateTime.now());
+          }
+        },
+        builder: (context, state) {
+          final unread = state is NotifikasiLoaded ? state.unreadCount : 0;
+          final total = state is NotifikasiLoaded ? state.items.length : 0;
+          return Scaffold(
+            backgroundColor: const Color(0xFFF5F7FA),
+            body: RefreshIndicator(
+              color: const Color(0xFF2E7D32),
+              onRefresh: () async =>
+                  context.read<NotifikasiBloc>().add(RefreshNotifikasi()),
+              child: CustomScrollView(
+                slivers: [
+                  _buildHeader(context, unread, total),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: LastUpdatedBadge(timestamp: _lastUpdatedAt),
+                          ),
+                        ],
                       ),
                     ),
-                  )
-                else if (state is NotifikasiError)
-                  SliverFillRemaining(
-                    child: _buildError(context, (state).message),
-                  )
-                else if (state is NotifikasiLoaded)
-                  _buildList(context, state)
-                else
-                  const SliverFillRemaining(child: SizedBox()),
-              ],
+                  ),
+                  if (state is NotifikasiLoading)
+                    const SliverFillRemaining(
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF2E7D32),
+                        ),
+                      ),
+                    )
+                  else if (state is NotifikasiError)
+                    SliverFillRemaining(
+                      child: _buildError(context, (state).message),
+                    )
+                  else if (state is NotifikasiLoaded)
+                    _buildList(context, state)
+                  else
+                    const SliverFillRemaining(child: SizedBox()),
+                ],
+              ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
-  Widget _buildHeader(BuildContext context, int unread) {
+  Widget _buildHeader(BuildContext context, int unread, int total) {
     return SliverToBoxAdapter(
       child: Container(
         decoration: const BoxDecoration(
@@ -84,6 +122,21 @@ class NotifikasiPage extends StatelessWidget {
                         'Peringatan & informasi sistem',
                         style: TextStyle(color: Colors.white70, fontSize: 12),
                       ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          _summaryPill(
+                            '$total total',
+                            Icons.notifications_none,
+                          ),
+                          _summaryPill(
+                            '$unread belum dibaca',
+                            Icons.mark_email_unread_outlined,
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -104,6 +157,32 @@ class NotifikasiPage extends StatelessWidget {
     );
   }
 
+  Widget _summaryPill(String label, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 14),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   SliverList _buildList(BuildContext context, NotifikasiLoaded state) {
     if (state.items.isEmpty) {
       return SliverList(
@@ -114,8 +193,10 @@ class NotifikasiPage extends StatelessWidget {
               children: [
                 Icon(Icons.notifications_none, size: 56, color: Colors.grey),
                 SizedBox(height: 12),
-                Text('Tidak ada notifikasi',
-                    style: TextStyle(color: Colors.grey),),
+                Text(
+                  'Tidak ada notifikasi',
+                  style: TextStyle(color: Colors.grey),
+                ),
               ],
             ),
           ),
@@ -150,7 +231,9 @@ class NotifikasiPage extends StatelessWidget {
           color: item.isRead ? Colors.white : tipeColor.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: item.isRead ? Colors.grey[200]! : tipeColor.withValues(alpha: 0.3),
+            color: item.isRead
+                ? Colors.grey[200]!
+                : tipeColor.withValues(alpha: 0.3),
           ),
           boxShadow: [
             BoxShadow(
