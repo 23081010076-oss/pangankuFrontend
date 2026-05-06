@@ -48,10 +48,11 @@ flutter pub get
 
 3. Konfigurasi base URL API:
 
-Edit `lib/core/constants/app_constants.dart`:
+Aplikasi ini membaca URL API dari compile-time variable `API_BASE_URL`.
+Tidak perlu mengubah source code untuk deploy.
 
-```dart
-static const String baseUrl = 'http://your-api-url/api/v1';
+```bash
+flutter run --dart-define=API_BASE_URL=http://localhost:8080/api/v1
 ```
 
 4. Run app:
@@ -61,7 +62,7 @@ static const String baseUrl = 'http://your-api-url/api/v1';
 flutter run
 
 # Release mode
-flutter run --release
+flutter run --release --dart-define=API_BASE_URL=https://your-api-url/api/v1
 ```
 
 ## Project Structure
@@ -102,25 +103,30 @@ flutter test integration_test
 flutter build apk --debug
 
 # Release APK
-flutter build apk --release
+flutter build apk --release --dart-define=API_BASE_URL=https://your-api-url/api/v1
 
 # Split per ABI (ukuran lebih kecil)
-flutter build apk --split-per-abi
+flutter build apk --split-per-abi --dart-define=API_BASE_URL=https://your-api-url/api/v1
+```
+
+## Build Web
+
+```bash
+flutter build web --release --dart-define=API_BASE_URL=https://your-api-url/api/v1
 ```
 
 ## Build iOS
 
 ```bash
-flutter build ios --release
+flutter build ios --release --dart-define=API_BASE_URL=https://your-api-url/api/v1
 ```
 
 ## Environment Variables
 
-Buat file `.env` di root project:
+Flutter app memakai `--dart-define`, bukan file `.env` runtime:
 
 ```
-API_BASE_URL=http://your-api-url/api/v1
-GOOGLE_MAPS_API_KEY=your_maps_key
+API_BASE_URL=https://your-api-url/api/v1
 ```
 
 ## Contributing
