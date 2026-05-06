@@ -718,7 +718,7 @@ class _HomePage extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          'Kec. ${alert.kecamatanNama} â€¢ Prioritas ${alert.prioritas}',
+                          'Kec. ${alert.kecamatanNama} - Prioritas ${alert.prioritas}',
                           style: TextStyle(
                             fontSize: 11,
                             color: Colors.grey[600],

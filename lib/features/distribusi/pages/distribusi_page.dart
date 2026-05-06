@@ -1,13 +1,15 @@
-// Penjelasan file:
-// Feature: distribusi
-// Layer: ui
-// File: distribusi_page
-// Fungsi utama: File ini mengatur tampilan halaman, komponen visual, dan interaksi pengguna.
+// Doc:
+// Tujuan: Menampilkan halaman distribusi pangan, daftar pengiriman, detail rute, dan aksi status distribusi.
+// Dipakai oleh: Route distribusi dari menu utama aplikasi mobile.
+// Dependensi utama: DistribusiBloc, AuthBloc, KecamatanRepository, Flutter Map, latlong2, dan formatter intl.
+// Fungsi public/utama: DistribusiPage, _loadKecamatanCoords, _showRuteDialog, _showAddForm, _buildDistribusiCard.
+// Side effect penting: HTTP read distribusi/rute via BLoC, navigasi dialog, dan render peta rute distribusi.
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:dio/dio.dart';
 import '../bloc/distribusi_bloc.dart';
 import '../bloc/distribusi_event.dart';
 import '../bloc/distribusi_state.dart';
@@ -34,6 +36,9 @@ class _DistribusiPageState extends State<DistribusiPage> {
   final Map<String, _RuteData> _ruteCache = {};
   final Set<String> _loadingRute = {};
   final Map<String, String> _ruteError = {};
+  final List<_GreedyRecommendation> _greedyRecommendations = [];
+  bool _loadingGreedyRecommendations = false;
+  String? _greedyRecommendationError;
   late final DistribusiRepository _distribusiRepository;
   late final KecamatanRepository _kecamatanRepository;
   Map<String, LatLng>? _kecamatanCoords;
@@ -44,6 +49,7 @@ class _DistribusiPageState extends State<DistribusiPage> {
     super.initState();
     _distribusiRepository = context.read<DistribusiRepository>();
     _kecamatanRepository = context.read<KecamatanRepository>();
+    _loadGreedyRecommendations();
   }
 
   static const _statusList = [
@@ -116,6 +122,43 @@ class _DistribusiPageState extends State<DistribusiPage> {
     }
   }
 
+  Future<void> _loadGreedyRecommendations() async {
+    if (_loadingGreedyRecommendations) {
+      return;
+    }
+    setState(() {
+      _loadingGreedyRecommendations = true;
+      _greedyRecommendationError = null;
+    });
+
+    try {
+      final data = await _distribusiRepository.fetchGreedyRecommendations();
+      if (!mounted) return;
+      setState(() {
+        _greedyRecommendations
+          ..clear()
+          ..addAll(data.map(_GreedyRecommendation.fromJson));
+      });
+    } on DioException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _greedyRecommendationError = _distribusiRepository.getErrorMessage(
+          e,
+          fallback: 'Gagal memuat rekomendasi distribusi',
+        );
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _greedyRecommendationError = 'Gagal memuat rekomendasi distribusi';
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _loadingGreedyRecommendations = false);
+      }
+    }
+  }
+
   Future<void> _ensureKecamatanCoords() async {
     if (_kecamatanCoords != null) {
       return;
@@ -139,6 +182,7 @@ class _DistribusiPageState extends State<DistribusiPage> {
             ),
           );
           ctx.read<DistribusiBloc>().add(LoadDistribusiList());
+          _loadGreedyRecommendations();
         } else if (state is DistribusiStatusUpdated) {
           ScaffoldMessenger.of(ctx).showSnackBar(
             const SnackBar(
@@ -147,6 +191,7 @@ class _DistribusiPageState extends State<DistribusiPage> {
             ),
           );
           ctx.read<DistribusiBloc>().add(LoadDistribusiList());
+          _loadGreedyRecommendations();
         } else if (state is DistribusiLoaded) {
           setState(() => _lastUpdatedAt = DateTime.now());
         } else if (state is DistribusiError) {
@@ -163,6 +208,7 @@ class _DistribusiPageState extends State<DistribusiPage> {
           interval: const Duration(seconds: 30),
           onRefresh: () async {
             context.read<DistribusiBloc>().add(RefreshDistribusi());
+            await _loadGreedyRecommendations();
           },
           child: Scaffold(
             backgroundColor: const Color(0xFFF5F7FA),
@@ -177,8 +223,10 @@ class _DistribusiPageState extends State<DistribusiPage> {
                 : null,
             body: RefreshIndicator(
               color: const Color(0xFF2E7D32),
-              onRefresh: () async =>
-                  context.read<DistribusiBloc>().add(RefreshDistribusi()),
+              onRefresh: () async {
+                context.read<DistribusiBloc>().add(RefreshDistribusi());
+                await _loadGreedyRecommendations();
+              },
               child: CustomScrollView(
                 slivers: [
                   _buildHeader(state),
@@ -192,6 +240,9 @@ class _DistribusiPageState extends State<DistribusiPage> {
                     ),
                   ),
                   SliverToBoxAdapter(child: _buildFilters(state)),
+                  SliverToBoxAdapter(
+                    child: _buildGreedyRecommendations(canEdit),
+                  ),
                   if (state is DistribusiLoading)
                     const SliverFillRemaining(
                       child: Center(
@@ -455,6 +506,286 @@ class _DistribusiPageState extends State<DistribusiPage> {
     );
   }
 
+  Widget _buildGreedyRecommendations(bool canEdit) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: const Color(0xFF1565C0).withValues(alpha: 0.12),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE3F2FD),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.auto_awesome_motion_outlined,
+                    color: Color(0xFF1565C0),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Rekomendasi Greedy Allocation',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF1F2937),
+                        ),
+                      ),
+                      Text(
+                        'Prioritas alokasi dari surplus ke defisit',
+                        style: TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Muat ulang rekomendasi',
+                  onPressed: _loadingGreedyRecommendations
+                      ? null
+                      : _loadGreedyRecommendations,
+                  icon: const Icon(Icons.refresh, size: 19),
+                  color: const Color(0xFF1565C0),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (_loadingGreedyRecommendations)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Center(
+                  child: SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2.4),
+                  ),
+                ),
+              )
+            else if (_greedyRecommendationError != null)
+              _buildGreedyError()
+            else if (_greedyRecommendations.isEmpty)
+              _buildGreedyEmpty()
+            else
+              Column(
+                children: [
+                  for (final item in _greedyRecommendations.take(3))
+                    _buildGreedyRecommendationCard(item, canEdit),
+                  if (_greedyRecommendations.length > 3)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        '+${_greedyRecommendations.length - 3} rekomendasi lainnya tersedia',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF607D8B),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGreedyError() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFEBEE),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.error_outline, size: 18, color: Color(0xFFC62828)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              _greedyRecommendationError ?? 'Gagal memuat rekomendasi',
+              style: const TextStyle(fontSize: 12, color: Color(0xFFC62828)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGreedyEmpty() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Text(
+        'Belum ada pasangan surplus-defisit yang memenuhi ambang 70% dan 30%.',
+        style: TextStyle(fontSize: 12, color: Color(0xFF607D8B)),
+      ),
+    );
+  }
+
+  Widget _buildGreedyRecommendationCard(
+    _GreedyRecommendation item,
+    bool canEdit,
+  ) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  item.komoditasNama,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF1F2937),
+                  ),
+                ),
+              ),
+              Text(
+                '${NumberFormat('#,##0.##', 'id').format(item.jumlahKg)} kg',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF1565C0),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 7),
+          Row(
+            children: [
+              const Icon(
+                Icons.warehouse_outlined,
+                size: 14,
+                color: Color(0xFF2E7D32),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  item.dariNama,
+                  style: const TextStyle(fontSize: 12),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                child: Icon(Icons.arrow_forward, size: 14, color: Colors.grey),
+              ),
+              const Icon(
+                Icons.location_on_outlined,
+                size: 14,
+                color: Color(0xFFC62828),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  item.keNama,
+                  style: const TextStyle(fontSize: 12),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _smallInfoPill(
+                '${item.jarakKm.toStringAsFixed(1)} km',
+                Icons.route_outlined,
+                const Color(0xFF1565C0),
+              ),
+              _smallInfoPill(
+                '${item.rute.length} titik rute',
+                Icons.alt_route_outlined,
+                const Color(0xFF6A1B9A),
+              ),
+            ],
+          ),
+          if (canEdit) ...[
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: () => _showCreateForm(context, recommendation: item),
+                icon: const Icon(Icons.add_task_outlined, size: 16),
+                label: const Text('Gunakan'),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF1565C0),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _smallInfoPill(String label, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   SliverList _buildList(DistribusiLoaded state) {
     if (state.items.isEmpty) {
       return SliverList(
@@ -525,7 +856,7 @@ class _DistribusiPageState extends State<DistribusiPage> {
                     children: [
                       Expanded(
                         child: Text(
-                          '${item.dari} â†’ ${item.ke}',
+                          '${item.dari} -> ${item.ke}',
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -566,7 +897,7 @@ class _DistribusiPageState extends State<DistribusiPage> {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        '${item.komoditas} â€” ${NumberFormat('#,##0', 'id').format(item.jumlahKg)} kg',
+                        '${item.komoditas} - ${NumberFormat('#,##0', 'id').format(item.jumlahKg)} kg',
                         style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                     ],
@@ -749,7 +1080,7 @@ class _DistribusiPageState extends State<DistribusiPage> {
     showDialog(
       context: ctx,
       builder: (_) => AlertDialog(
-        title: const Text('Hapus Distribusi?'),
+        title: const Text('Hapus Distribusi-'),
         content: const Text('Tindakan ini tidak dapat dibatalkan.'),
         actions: [
           TextButton(
@@ -1004,14 +1335,17 @@ class _DistribusiPageState extends State<DistribusiPage> {
     }
   }
 
-  void _showCreateForm(BuildContext ctx) {
+  void _showCreateForm(
+    BuildContext ctx, {
+    _GreedyRecommendation? recommendation,
+  }) {
     showModalBottomSheet(
       context: ctx,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => BlocProvider.value(
         value: ctx.read<DistribusiBloc>(),
-        child: const _CreateDistribusiSheet(),
+        child: _CreateDistribusiSheet(initialRecommendation: recommendation),
       ),
     );
   }

@@ -15,7 +15,7 @@ class HargaRepository {
 
 // Method ini mengambil data dari backend lalu mengubahnya ke bentuk yang aman dipakai di aplikasi.
   Future<List<Map<String, dynamic>>> fetchLatestHarga() async {
-    final response = await _client.dio.get('/harga/latest');
+    final response = await _client.dio.get('/harga/latest?mode=per_kecamatan');
     final data = response.data;
     final list = (data is Map ? (data['data'] ?? []) : data ?? []);
     if (list is! List) {

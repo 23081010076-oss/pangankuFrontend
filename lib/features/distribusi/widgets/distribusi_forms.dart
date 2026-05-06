@@ -24,8 +24,59 @@ class _RuteStep {
   const _RuteStep({required this.id, required this.nama});
 }
 
+class _GreedyRecommendation {
+  final String komoditasId;
+  final String komoditasNama;
+  final String dariKecamatanId;
+  final String dariNama;
+  final String keKecamatanId;
+  final String keNama;
+  final double jumlahKg;
+  final double jarakKm;
+  final List<_RuteStep> rute;
+
+  const _GreedyRecommendation({
+    required this.komoditasId,
+    required this.komoditasNama,
+    required this.dariKecamatanId,
+    required this.dariNama,
+    required this.keKecamatanId,
+    required this.keNama,
+    required this.jumlahKg,
+    required this.jarakKm,
+    required this.rute,
+  });
+
+  factory _GreedyRecommendation.fromJson(Map<String, dynamic> json) {
+    final rawRute = json['rute'] as List<dynamic>? ?? [];
+    return _GreedyRecommendation(
+      komoditasId: json['komoditas_id']?.toString() ?? '',
+      komoditasNama: json['komoditas_nama']?.toString() ?? '-',
+      dariKecamatanId: json['dari_kecamatan_id']?.toString() ?? '',
+      dariNama: json['dari_kecamatan_nama']?.toString() ?? '-',
+      keKecamatanId: json['ke_kecamatan_id']?.toString() ?? '',
+      keNama: json['ke_kecamatan_nama']?.toString() ?? '-',
+      jumlahKg: (json['jumlah_kg'] as num?)?.toDouble() ?? 0,
+      jarakKm: (json['jarak_km'] as num?)?.toDouble() ?? 0,
+      rute: rawRute
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .map(
+            (e) => _RuteStep(
+              id: e['kecamatan_id']?.toString() ?? '',
+              nama: e['kecamatan_nama']?.toString() ?? '-',
+            ),
+          )
+          .where((e) => e.id.isNotEmpty)
+          .toList(),
+    );
+  }
+}
+
 class _CreateDistribusiSheet extends StatefulWidget {
-  const _CreateDistribusiSheet();
+  final _GreedyRecommendation? initialRecommendation;
+
+  const _CreateDistribusiSheet({this.initialRecommendation});
 
   @override
   State<_CreateDistribusiSheet> createState() => _CreateDistribusiSheetState();
@@ -47,6 +98,13 @@ class _CreateDistribusiSheetState extends State<_CreateDistribusiSheet> {
   @override
   void initState() {
     super.initState();
+    final initial = widget.initialRecommendation;
+    if (initial != null) {
+      _selDari = initial.dariKecamatanId;
+      _selKe = initial.keKecamatanId;
+      _selKomoditas = initial.komoditasId;
+      _jumlahCtrl.text = initial.jumlahKg.toStringAsFixed(2);
+    }
     _loadOptions();
   }
 

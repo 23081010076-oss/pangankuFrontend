@@ -1,8 +1,9 @@
-// Penjelasan file:
-// Feature: admin
-// Layer: ui
-// File: harga_admin_page
-// Fungsi utama: File ini mengatur tampilan halaman, komponen visual, dan interaksi pengguna.
+// Doc:
+// Tujuan: Menampilkan halaman admin harga untuk filter, tambah, edit, hapus, dan melihat riwayat harga komoditas.
+// Dipakai oleh: Route admin harga dari menu administrasi aplikasi mobile.
+// Dependensi utama: AdminRepository, DioException, Flutter Material, Bloc context, dan formatter intl.
+// Fungsi public/utama: HargaAdminPage, _loadData, _create, _update, _delete, _showForm, _buildTile.
+// Side effect penting: HTTP read/write data harga dan render daftar harga dari backend.
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -254,7 +255,7 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
                       Icon(Icons.history, size: 14, color: Colors.grey[500]),
                       const SizedBox(width: 4),
                       Text(
-                        'Data historis â€” tidak dapat diedit',
+                        'Data historis - tidak dapat diedit',
                         style: TextStyle(fontSize: 11, color: Colors.grey[500]),
                       ),
                     ],
@@ -656,7 +657,7 @@ class _HargaAdminPageState extends State<HargaAdminPage> {
   }
 }
 
-// â”€â”€ Harga Form Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Form Sheet
 class _HargaFormSheet extends StatefulWidget {
   final List<Map<String, dynamic>> komoditasList;
   final List<Map<String, dynamic>> kecamatanList;
@@ -895,7 +896,7 @@ class _HargaFormSheetState extends State<_HargaFormSheet> {
   }
 }
 
-// â”€â”€ Empty State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Empty State
 class _EmptyState extends StatelessWidget {
   const _EmptyState();
 

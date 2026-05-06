@@ -1,8 +1,9 @@
-// Penjelasan file:
-// Feature: laporan
-// Layer: ui
-// File: laporan_sheet
-// Fungsi utama: File ini mengatur tampilan halaman, komponen visual, dan interaksi pengguna.
+// Doc:
+// Tujuan: Menyediakan bottom sheet dan delegate tab untuk halaman laporan darurat.
+// Dipakai oleh: laporan_page.dart melalui part widget laporan.
+// Dependensi utama: LaporanBloc, Flutter Material, dan komponen SliverPersistentHeaderDelegate.
+// Fungsi public/utama: _TabBarDelegate dan widget sheet pendukung laporan.
+// Side effect penting: Render UI sheet laporan dan meneruskan aksi pengguna ke halaman induk.
 part of '../pages/laporan_page.dart';
 
 class _TabBarDelegate extends SliverPersistentHeaderDelegate {
@@ -26,7 +27,7 @@ class _TabBarDelegate extends SliverPersistentHeaderDelegate {
   bool shouldRebuild(_TabBarDelegate oldDelegate) => false;
 }
 
-// â”€â”€ Create Laporan Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Create Laporan Sheet
 class _CreateLaporanSheet extends StatefulWidget {
   const _CreateLaporanSheet();
 

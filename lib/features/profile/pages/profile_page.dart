@@ -1,8 +1,9 @@
-// Penjelasan file:
-// Feature: profile
-// Layer: ui
-// File: profile_page
-// Fungsi utama: File ini mengatur tampilan halaman, komponen visual, dan interaksi pengguna.
+// Doc:
+// Tujuan: Menampilkan profil pengguna, pengaturan akun, edit profil, dan perubahan kata sandi.
+// Dipakai oleh: Route profil pada aplikasi mobile.
+// Dependensi utama: AuthBloc, GoRouter, Flutter Material, dan event auth/profile.
+// Fungsi public/utama: ProfilePage, _buildHeader, _buildMenuSection, _showEditProfileSheet, _showChangePasswordSheet.
+// Side effect penting: Mengirim event update profil/password, logout, dan navigasi menu akun.
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -564,8 +565,8 @@ class _ProfilePageState extends State<ProfilePage> {
     showDialog(
       context: ctx,
       builder: (_) => AlertDialog(
-        title: const Text('Keluar?'),
-        content: const Text('Apakah Anda yakin ingin keluar?'),
+        title: const Text('Keluar-'),
+        content: const Text('Apakah Anda yakin ingin keluar-'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -612,7 +613,7 @@ class _MenuItem {
   });
 }
 
-// â”€â”€ Edit Profil Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Edit Profil Sheet
 class _EditProfilSheet extends StatefulWidget {
   final dynamic profile;
   const _EditProfilSheet({required this.profile});
@@ -797,7 +798,7 @@ class _EditProfilSheetState extends State<_EditProfilSheet> {
   }
 }
 
-// â”€â”€ Change Password Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Change Password Sheet
 class _ChangePasswordSheet extends StatefulWidget {
   const _ChangePasswordSheet();
 

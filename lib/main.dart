@@ -27,6 +27,7 @@ import 'package:panganku_mobile/features/auth/bloc/auth_bloc.dart';
 import 'package:panganku_mobile/features/auth/bloc/auth_event.dart';
 import 'package:panganku_mobile/features/auth/bloc/auth_state.dart';
 import 'package:panganku_mobile/features/auth/data/auth_repository.dart';
+import 'package:panganku_mobile/features/auth/pages/forgot_password_page.dart';
 import 'package:panganku_mobile/features/auth/pages/login_page.dart';
 import 'package:panganku_mobile/features/auth/pages/register_page.dart';
 import 'package:panganku_mobile/features/dashboard/pages/dashboard_page.dart';
@@ -142,6 +143,10 @@ final _router = GoRouter(
       builder: (context, state) => const RegisterPage(),
     ),
     GoRoute(
+      path: '/forgot-password',
+      builder: (context, state) => const ForgotPasswordPage(),
+    ),
+    GoRoute(
       path: '/dashboard',
       builder: (context, state) => const DashboardPage(),
     ),
@@ -247,6 +252,7 @@ final _router = GoRouter(
     final isAdmin = authState is AuthAuthenticated && authState.role == 'admin';
     final isAdminRoute = state.matchedLocation.startsWith('/admin/');
     final isLoggingIn = state.matchedLocation == '/login' ||
+        state.matchedLocation == '/forgot-password' ||
         state.matchedLocation == '/register' ||
         state.matchedLocation == '/splash';
 

@@ -1,8 +1,9 @@
-// Penjelasan file:
-// Feature: admin
-// Layer: ui
-// File: kecamatan_admin_page
-// Fungsi utama: File ini mengatur tampilan halaman, komponen visual, dan interaksi pengguna.
+// Doc:
+// Tujuan: Menampilkan halaman admin kecamatan untuk tambah, edit, hapus, pencarian, dan detail koordinat/luas wilayah.
+// Dipakai oleh: Route admin kecamatan dari menu administrasi aplikasi mobile.
+// Dependensi utama: AdminRepository, DioException, Flutter Material, Bloc context, dan input formatter.
+// Fungsi public/utama: KecamatanAdminPage, _loadData, _create, _update, _delete, _showForm, _buildTile.
+// Side effect penting: HTTP read/write data kecamatan dan render daftar kecamatan dari backend.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:dio/dio.dart';
@@ -102,7 +103,7 @@ class _KecamatanAdminPageState extends State<KecamatanAdminPage> {
       builder: (ctx) => AlertDialog(
         title: const Text('Hapus Kecamatan'),
         content: Text(
-          'Hapus "$nama"? Data stok dan harga terkait juga dapat terpengaruh.',
+          'Hapus "$nama"- Data stok dan harga terkait juga dapat terpengaruh.',
         ),
         actions: [
           TextButton(
@@ -388,7 +389,7 @@ class _KecamatanAdminPageState extends State<KecamatanAdminPage> {
           style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
         ),
         subtitle: Text(
-          'Lat ${lat.toStringAsFixed(4)} Â· Lng ${lng.toStringAsFixed(4)}${luas > 0 ? ' Â· ${luas.toStringAsFixed(0)} ha' : ''}',
+          'Lat ${lat.toStringAsFixed(4)} - Lng ${lng.toStringAsFixed(4)}${luas > 0 ? ' - ${luas.toStringAsFixed(0)} ha' : ''}',
           style: const TextStyle(fontSize: 11, color: Colors.grey),
         ),
         trailing: Row(

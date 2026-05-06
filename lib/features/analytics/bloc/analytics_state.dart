@@ -4,10 +4,10 @@
 // File: analytics_state
 // Fungsi utama: File ini mengatur alur proses, event, state, dan aturan aplikasi.
 // Doc:
-// Tujuan: Mendefinisikan state analytics, model dashboard, status pangan, metadata komoditas, dan detail luas lahan kecamatan untuk UI analitik.
+// Tujuan: Mendefinisikan state analytics, model dashboard, status pangan, metadata komoditas, tren kecamatan, dan detail luas lahan untuk UI analitik.
 // Dipakai oleh: AnalyticsBloc, AnalyticsPage, analytics sections, dashboard chart, dan laporan analytics.
 // Dependensi utama: Response JSON dari AnalyticsRepository dan endpoint `/analytics/dashboard` serta `/analytics/status-pangan`.
-// Fungsi public/utama: KomoditasTrend, LuasLahanKecamatan, DashboardStats, ActiveAlert, StatusPanganItem, AnalyticsState variants.
+// Fungsi public/utama: KomoditasTrend, KecamatanTrend, LuasLahanKecamatan, DashboardStats, ActiveAlert, StatusPanganItem, AnalyticsState variants.
 // Side effect penting: Tidak ada I/O langsung; parsing JSON menentukan data yang bisa dirender UI.
 class LuasLahanKecamatan {
   final String kecamatanId;
@@ -69,6 +69,38 @@ class KomoditasTrend {
   }
 }
 
+class KecamatanTrend {
+  final String id;
+  final String nama;
+  final double avgHarga;
+  final double totalStok;
+  final double luasLahan;
+  final List<double> hargaHarian;
+  final List<double> stokHarian;
+
+  const KecamatanTrend({
+    required this.id,
+    required this.nama,
+    required this.avgHarga,
+    required this.totalStok,
+    required this.luasLahan,
+    required this.hargaHarian,
+    required this.stokHarian,
+  });
+
+  factory KecamatanTrend.fromJson(Map<String, dynamic> json) {
+    return KecamatanTrend(
+      id: json['id']?.toString() ?? '',
+      nama: json['nama']?.toString() ?? 'Kecamatan',
+      avgHarga: (json['avg_harga'] ?? 0).toDouble(),
+      totalStok: (json['total_stok'] ?? 0).toDouble(),
+      luasLahan: (json['luas_lahan'] ?? 0).toDouble(),
+      hargaHarian: DashboardStats._parseDoubleList(json['harga_harian']),
+      stokHarian: DashboardStats._parseStokList(json['stok_harian']),
+    );
+  }
+}
+
 class DashboardStats {
   final String periode;
   final List<String> tanggalLabels;
@@ -83,6 +115,7 @@ class DashboardStats {
   final List<String> listKecamatanWaspada;
   final List<String> listKecamatanKritis;
   final List<KomoditasTrend> komoditasTrend;
+  final List<KecamatanTrend> kecamatanTrend;
   final int distribusiAktif;
   final int laporanBulanIni;
 
@@ -100,6 +133,7 @@ class DashboardStats {
     this.listKecamatanWaspada = const [],
     this.listKecamatanKritis = const [],
     required this.komoditasTrend,
+    this.kecamatanTrend = const [],
     required this.distribusiAktif,
     required this.laporanBulanIni,
   });
@@ -138,6 +172,14 @@ class DashboardStats {
     );
   }
 
+  static List<KecamatanTrend> _parseKecamatanTrendList(dynamic raw) {
+    if (raw == null) return const [];
+    return List<KecamatanTrend>.from(
+      (raw as List)
+          .map((e) => KecamatanTrend.fromJson(e as Map<String, dynamic>)),
+    );
+  }
+
   static List<LuasLahanKecamatan> _parseLuasLahanKecamatanList(dynamic raw) {
     if (raw == null) return const [];
     return List<LuasLahanKecamatan>.from(
@@ -149,6 +191,7 @@ class DashboardStats {
   factory DashboardStats.fromJson(Map<String, dynamic> json) {
     final labels = _parseStringList(json['tanggal_labels']);
     final komTrend = _parseKomoditasTrendList(json['komoditas_trend']);
+    final kecTrend = _parseKecamatanTrendList(json['kecamatan_trend']);
 
     return DashboardStats(
       periode: json['periode']?.toString() ?? '7d',
@@ -164,6 +207,7 @@ class DashboardStats {
       listKecamatanWaspada: _parseStringList(json['list_kecamatan_waspada']),
       listKecamatanKritis: _parseStringList(json['list_kecamatan_kritis']),
       komoditasTrend: komTrend,
+      kecamatanTrend: kecTrend,
       distribusiAktif: (json['distribusi_aktif'] as num?)?.toInt() ?? 0,
       laporanBulanIni: (json['laporan_bulan_ini'] as num?)?.toInt() ?? 0,
     );

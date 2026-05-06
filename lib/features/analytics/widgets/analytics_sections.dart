@@ -2,22 +2,11 @@
 // Tujuan: Menyusun section utama tab analitik, terutama status pangan per kecamatan dan tren harga wilayah.
 // Dipakai oleh: analytics_page.dart melalui part/extension _AnalyticsPageSections pada _AnalyticsPageState.
 // Dependensi utama: AnalyticsBloc/AnalyticsState, model StatusPanganItem, fl_chart, helper warna/status di analytics page.
-// Fungsi public/utama: _buildStatusPerKecamatanTab, _statusStatCard, _stokRankRow, _buildStatusRankDropdown, _shortKecamatanName.
+// Fungsi public/utama: _buildStatusPerKecamatanTab, _statusStatCard, _buildKecamatanStockLineChart, _stokRankRow, _buildStatusRankDropdown.
 // Side effect penting: Trigger refresh BLoC event, membuka filter bottom sheet, render chart interaktif tanpa I/O langsung.
 part of '../pages/analytics_page.dart';
 
 extension _AnalyticsPageSections on _AnalyticsPageState {
-  String _shortKecamatanName(String name) {
-    final parts = name.trim().split(RegExp(r'\s+'));
-    if (parts.length <= 1) {
-      return name;
-    }
-    if (parts.length == 2) {
-      return '${parts[0]}\n${parts[1]}';
-    }
-    return '${parts.first}\n${parts[1]}';
-  }
-
   Widget _statusStatCard(String label, int count, Color color) {
     final icon = switch (label) {
       'Aman' => Icons.verified_rounded,
@@ -172,7 +161,7 @@ extension _AnalyticsPageSections on _AnalyticsPageState {
             ),
           ),
           subtitle: Text(
-            '${items.length} kecamatan • buka untuk lihat ranking',
+            '${items.length} kecamatan - buka untuk lihat ranking',
             style: const TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w600,
@@ -343,6 +332,12 @@ extension _AnalyticsPageSections on _AnalyticsPageState {
     final aman = top.where((e) => e.statusStok == 'aman').length;
     final waspada = top.where((e) => e.statusStok == 'waspada').length;
     final kritis = top.where((e) => e.statusStok == 'kritis').length;
+    final avgStok =
+        top.map((e) => e.stokPersen).reduce((a, b) => a + b) / top.length;
+    final lowestStok = top.first;
+    final highestStok = top.reduce(
+      (a, b) => a.stokPersen >= b.stokPersen ? a : b,
+    );
     final totalTrend = (naik + turun + stabil).clamp(1, 999999);
     final trendSummary = [
       (
@@ -507,253 +502,18 @@ extension _AnalyticsPageSections on _AnalyticsPageState {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: _chartCard(
-                height: 360,
+                height: 420,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        _StatusLegendChip(
-                          label: 'Kritis < 30%',
-                          color: Color(0xFFC62828),
-                        ),
-                        _StatusLegendChip(
-                          label: 'Waspada 30-69%',
-                          color: Color(0xFFFF8F00),
-                        ),
-                        _StatusLegendChip(
-                          label: 'Aman >= 70%',
-                          color: Color(0xFF2E7D32),
-                        ),
-                      ],
+                    _buildKecamatanStockHeader(
+                      avgStok: avgStok,
+                      lowest: lowestStok,
+                      highest: highestStok,
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 12),
                     Expanded(
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: SizedBox(
-                          width: math.max(
-                            MediaQuery.of(ctx).size.width - 64,
-                            top.length * 96.0 + 56,
-                          ),
-                          child: LineChart(
-                            LineChartData(
-                              maxY: 120,
-                              minY: 0,
-                              minX: -0.35,
-                              maxX:
-                                  math.max(0, top.length - 1).toDouble() + 0.35,
-                              clipData: const FlClipData.none(),
-                              extraLinesData: ExtraLinesData(
-                                horizontalLines: [
-                                  HorizontalLine(
-                                    y: 30,
-                                    color: const Color(0xFFC62828)
-                                        .withValues(alpha: 0.45),
-                                    strokeWidth: 1.6,
-                                    dashArray: [5, 5],
-                                    label: HorizontalLineLabel(
-                                      show: true,
-                                      alignment: Alignment.topLeft,
-                                      padding: const EdgeInsets.only(
-                                        left: 4,
-                                        bottom: 4,
-                                      ),
-                                      style: const TextStyle(
-                                        color: Color(0xFFC62828),
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                      labelResolver: (_) => 'Kritis',
-                                    ),
-                                  ),
-                                  HorizontalLine(
-                                    y: 70,
-                                    color: const Color(0xFF2E7D32)
-                                        .withValues(alpha: 0.45),
-                                    strokeWidth: 1.6,
-                                    dashArray: [5, 5],
-                                    label: HorizontalLineLabel(
-                                      show: true,
-                                      alignment: Alignment.topLeft,
-                                      padding: const EdgeInsets.only(
-                                        left: 4,
-                                        bottom: 4,
-                                      ),
-                                      style: const TextStyle(
-                                        color: Color(0xFF2E7D32),
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                      labelResolver: (_) => 'Aman',
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              gridData: FlGridData(
-                                show: true,
-                                horizontalInterval: 20,
-                                drawVerticalLine: false,
-                                getDrawingHorizontalLine: (value) => FlLine(
-                                  color: const Color(0xFF90A4AE)
-                                      .withValues(alpha: 0.16),
-                                  strokeWidth: 1,
-                                  dashArray: [4, 4],
-                                ),
-                              ),
-                              borderData: FlBorderData(
-                                show: true,
-                                border: Border(
-                                  left: BorderSide(
-                                    color: Colors.blueGrey.withValues(
-                                      alpha: 0.18,
-                                    ),
-                                  ),
-                                  bottom: BorderSide(
-                                    color: Colors.blueGrey.withValues(
-                                      alpha: 0.18,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              lineTouchData: LineTouchData(
-                                enabled: true,
-                                handleBuiltInTouches: true,
-                                touchTooltipData: LineTouchTooltipData(
-                                  fitInsideHorizontally: true,
-                                  fitInsideVertically: true,
-                                  tooltipPadding: const EdgeInsets.all(10),
-                                  tooltipMargin: 8,
-                                  getTooltipColor: (_) =>
-                                      const Color(0xFF14332E),
-                                  getTooltipItems: (touchedSpots) {
-                                    return touchedSpots.map((spot) {
-                                      final idx = spot.x.toInt();
-                                      if (idx < 0 || idx >= top.length) {
-                                        return null;
-                                      }
-                                      final item = top[idx];
-                                      return LineTooltipItem(
-                                        '${item.kecamatanNama}\n${spot.y.toStringAsFixed(1)}%',
-                                        TextStyle(
-                                          color: _statusColor(item.statusStok),
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 12,
-                                        ),
-                                      );
-                                    }).toList();
-                                  },
-                                ),
-                              ),
-                              titlesData: FlTitlesData(
-                                topTitles: const AxisTitles(
-                                  sideTitles: SideTitles(showTitles: false),
-                                ),
-                                rightTitles: const AxisTitles(
-                                  sideTitles: SideTitles(showTitles: false),
-                                ),
-                                leftTitles: AxisTitles(
-                                  sideTitles: SideTitles(
-                                    showTitles: true,
-                                    interval: 20,
-                                    reservedSize: 34,
-                                    getTitlesWidget: (v, _) => Text(
-                                      '${v.toInt()}%',
-                                      style: const TextStyle(
-                                        fontSize: 10,
-                                        color: Color(0xFF78909C),
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                bottomTitles: AxisTitles(
-                                  sideTitles: SideTitles(
-                                    showTitles: true,
-                                    reservedSize: 92,
-                                    interval: 1,
-                                    getTitlesWidget: (v, _) {
-                                      if (v % 1 != 0) {
-                                        return const SizedBox.shrink();
-                                      }
-
-                                      final i = v.toInt();
-                                      if (i < 0 || i >= top.length) {
-                                        return const SizedBox.shrink();
-                                      }
-
-                                      return Padding(
-                                        padding: const EdgeInsets.only(
-                                          top: 10,
-                                          left: 6,
-                                          right: 6,
-                                        ),
-                                        child: Text(
-                                          _shortKecamatanName(
-                                            top[i].kecamatanNama,
-                                          ),
-                                          maxLines: 2,
-                                          textAlign: TextAlign.center,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w700,
-                                            color: Color(0xFF455A64),
-                                            height: 1.15,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ),
-                              lineBarsData: [
-                                LineChartBarData(
-                                  spots: [
-                                    for (int i = 0; i < top.length; i++)
-                                      FlSpot(i.toDouble(), top[i].stokPersen),
-                                  ],
-                                  isCurved: true,
-                                  preventCurveOverShooting: true,
-                                  color: const Color(0xFF0F766E),
-                                  barWidth: 4,
-                                  isStrokeCapRound: true,
-                                  belowBarData: BarAreaData(
-                                    show: true,
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      colors: [
-                                        const Color(0xFF0F766E)
-                                            .withValues(alpha: 0.18),
-                                        const Color(0xFF0F766E)
-                                            .withValues(alpha: 0.02),
-                                      ],
-                                    ),
-                                  ),
-                                  dotData: FlDotData(
-                                    show: true,
-                                    getDotPainter:
-                                        (spot, percent, barData, index) {
-                                      final item = top[index];
-                                      final statusColor =
-                                          _statusColor(item.statusStok);
-                                      return FlDotCirclePainter(
-                                        radius: 5,
-                                        color: Colors.white,
-                                        strokeWidth: 2.8,
-                                        strokeColor: statusColor,
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
+                      child: _buildKecamatanStockLineChart(ctx, top),
                     ),
                   ],
                 ),
@@ -1083,42 +843,361 @@ extension _AnalyticsPageSections on _AnalyticsPageState {
       ),
     );
   }
-}
 
-class _StatusLegendChip extends StatelessWidget {
-  const _StatusLegendChip({required this.label, required this.color});
+  Widget _buildKecamatanStockHeader({
+    required double avgStok,
+    required StatusPanganItem lowest,
+    required StatusPanganItem highest,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8F5E9),
+                borderRadius: BorderRadius.circular(13),
+              ),
+              child: const Icon(
+                Icons.stacked_bar_chart_rounded,
+                color: Color(0xFF2E7D32),
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Peringkat Stok Kecamatan',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF263238),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Diurutkan dari paling rentan ke paling aman.',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.blueGrey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _stockMetricChip(
+              'Rata-rata',
+              '${avgStok.toStringAsFixed(1)}%',
+              const Color(0xFF1976D2),
+            ),
+            _stockMetricChip(
+              'Terendah',
+              '${lowest.kecamatanNama} ${lowest.stokPersen.toStringAsFixed(0)}%',
+              _statusColor(lowest.statusStok),
+            ),
+            _stockMetricChip(
+              'Tertinggi',
+              '${highest.kecamatanNama} ${highest.stokPersen.toStringAsFixed(0)}%',
+              _statusColor(highest.statusStok),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              flex: 30,
+              child: _thresholdSegment(
+                'Kritis',
+                '< 30%',
+                const Color(0xFFC62828),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              flex: 40,
+              child: _thresholdSegment(
+                'Waspada',
+                '30-69%',
+                const Color(0xFFFF8F00),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              flex: 30,
+              child: _thresholdSegment(
+                'Aman',
+                '>= 70%',
+                const Color(0xFF2E7D32),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 
-  final String label;
-  final Color color;
+  Widget _buildKecamatanStockLineChart(
+    BuildContext ctx,
+    List<StatusPanganItem> top,
+  ) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: SizedBox(
+        width: math.max(MediaQuery.of(ctx).size.width - 64, top.length * 86.0),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(0, 8, 10, 0),
+          child: LineChart(
+            LineChartData(
+              maxY: 100,
+              minY: 0,
+              minX: -0.25,
+              maxX: math.max(0, top.length - 1).toDouble() + 0.25,
+              clipData: const FlClipData.all(),
+              extraLinesData: ExtraLinesData(
+                horizontalLines: [
+                  HorizontalLine(
+                    y: 30,
+                    color: const Color(0xFFC62828).withValues(alpha: 0.42),
+                    strokeWidth: 1.5,
+                    dashArray: [5, 5],
+                  ),
+                  HorizontalLine(
+                    y: 70,
+                    color: const Color(0xFF2E7D32).withValues(alpha: 0.42),
+                    strokeWidth: 1.5,
+                    dashArray: [5, 5],
+                  ),
+                ],
+              ),
+              gridData: FlGridData(
+                show: true,
+                horizontalInterval: 20,
+                drawVerticalLine: false,
+                getDrawingHorizontalLine: (value) => FlLine(
+                  color: const Color(0xFF90A4AE).withValues(alpha: 0.15),
+                  strokeWidth: 1,
+                  dashArray: [4, 4],
+                ),
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  left: BorderSide(
+                    color: Colors.blueGrey.withValues(alpha: 0.16),
+                  ),
+                  bottom: BorderSide(
+                    color: Colors.blueGrey.withValues(alpha: 0.16),
+                  ),
+                ),
+              ),
+              lineTouchData: LineTouchData(
+                enabled: true,
+                handleBuiltInTouches: true,
+                touchTooltipData: LineTouchTooltipData(
+                  fitInsideHorizontally: true,
+                  fitInsideVertically: true,
+                  tooltipPadding: const EdgeInsets.all(9),
+                  tooltipMargin: 6,
+                  getTooltipColor: (_) => const Color(0xFF14332E),
+                  getTooltipItems: (touchedSpots) {
+                    return touchedSpots.map((spot) {
+                      final idx = spot.x.toInt();
+                      if (idx < 0 || idx >= top.length) return null;
+                      final item = top[idx];
+                      return LineTooltipItem(
+                        '${item.kecamatanNama}\n${item.stokPersen.toStringAsFixed(1)}% - ${_stockStatusLabel(item.statusStok)}',
+                        TextStyle(
+                          color: _statusColor(item.statusStok),
+                          fontWeight: FontWeight.w800,
+                          fontSize: 11,
+                        ),
+                      );
+                    }).toList();
+                  },
+                ),
+              ),
+              titlesData: FlTitlesData(
+                topTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    interval: 20,
+                    reservedSize: 34,
+                    getTitlesWidget: (v, _) {
+                      if (v < 0 || v > 100) {
+                        return const SizedBox.shrink();
+                      }
+                      return Text(
+                        '${v.toInt()}%',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: Color(0xFF78909C),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 46,
+                    interval: 1,
+                    getTitlesWidget: (v, _) {
+                      if (v % 1 != 0) return const SizedBox.shrink();
+                      final i = v.toInt();
+                      if (i < 0 || i >= top.length) {
+                        return const SizedBox.shrink();
+                      }
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          top[i].kecamatanNama,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF455A64),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              lineBarsData: [
+                LineChartBarData(
+                  spots: [
+                    for (int i = 0; i < top.length; i++)
+                      FlSpot(
+                        i.toDouble(),
+                        top[i].stokPersen.clamp(0, 100).toDouble(),
+                      ),
+                  ],
+                  isCurved: true,
+                  preventCurveOverShooting: true,
+                  color: const Color(0xFF0F766E),
+                  barWidth: 3.6,
+                  isStrokeCapRound: true,
+                  belowBarData: BarAreaData(
+                    show: true,
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        const Color(0xFF0F766E).withValues(alpha: 0.16),
+                        const Color(0xFF0F766E).withValues(alpha: 0.02),
+                      ],
+                    ),
+                  ),
+                  dotData: FlDotData(
+                    show: true,
+                    getDotPainter: (spot, percent, barData, index) {
+                      final item = top[index];
+                      final statusColor = _statusColor(item.statusStok);
+                      return FlDotCirclePainter(
+                        radius: 5,
+                        color: Colors.white,
+                        strokeWidth: 2.6,
+                        strokeColor: statusColor,
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _stockMetricChip(String label, String value, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.14)),
+        color: color.withValues(alpha: 0.09),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.12)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 8),
           Text(
             label,
             style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
+              fontSize: 9,
+              fontWeight: FontWeight.w800,
               color: color,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF263238),
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _thresholdSegment(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        '$label $value',
+        textAlign: TextAlign.center,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+          color: color,
+        ),
+      ),
+    );
+  }
+
+  String _stockStatusLabel(String status) {
+    switch (status) {
+      case 'aman':
+        return 'Aman';
+      case 'waspada':
+        return 'Waspada';
+      case 'kritis':
+        return 'Kritis';
+      default:
+        return 'Belum ada data';
+    }
   }
 }

@@ -1,8 +1,8 @@
 // Doc:
-// Tujuan: Mengatur tampilan halaman laporan, komponen visual grafik tren, serta export dan preview laporan PDF.
+// Tujuan: Mengatur tampilan halaman laporan, komponen visual grafik tren, serta export PDF analitik semua komoditas per kecamatan.
 // Dipakai oleh: Route `/laporan` di main tab navigation.
 // Dependensi utama: LaporanBloc, AnalyticsBloc, fl_chart, pdf, printing.
-// Fungsi public/utama: LaporanPage, _buildRingkasan, _exportToPdf.
+// Fungsi public/utama: LaporanPage, _buildRingkasan, _exportToPdf, agregasi harga/stok/luas lahan kecamatan untuk PDF.
 // Side effect penting: Interaksi user memicu fetch data laporan/dashboard; pembuatan dan share/preview dokumen PDF.
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -39,17 +39,6 @@ class _LaporanPageState extends State<LaporanPage>
   late final TabController _tabCtrl;
   String _periodeTren = 'Minggu';
   DateTime? _lastUpdatedAt;
-
-  List<double> _normalizeSeries(List<double> values) {
-    if (values.isEmpty) return const [];
-    final minV = values.reduce((a, b) => a < b ? a : b);
-    final maxV = values.reduce((a, b) => a > b ? a : b);
-    final span = maxV - minV;
-    if (span == 0) {
-      return List<double>.filled(values.length, 50);
-    }
-    return values.map((v) => ((v - minV) / span) * 100).toList();
-  }
 
   @override
   void initState() {
@@ -362,7 +351,7 @@ class _LaporanPageState extends State<LaporanPage>
     );
   }
 
-  // â”€â”€ Line Chart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // Line Chart
   Widget _buildTrenChart(List<LaporanItem> items) {
     final now = DateTime.now();
     int count = 7;
@@ -830,28 +819,61 @@ class _LaporanPageState extends State<LaporanPage>
       ]);
     }
 
-    final chartByProduk = <String, Map<String, dynamic>>{};
-    for (final k in stats.komoditasTrend) {
-      final normalizedHarga = _normalizeSeries(k.hargaHarian);
-      final normalizedStok = _normalizeSeries(k.stokHarian);
-
-      var dataLen = normalizedHarga.length;
-      if (normalizedStok.length < dataLen) dataLen = normalizedStok.length;
-      if (dataLen < 2) continue;
-
-      final baseLabels = stats.tanggalLabels.isNotEmpty
-          ? stats.tanggalLabels
-          : List<String>.generate(dataLen, (i) => 'H${i + 1}');
-      var labelLen = baseLabels.length;
-      if (dataLen < labelLen) labelLen = dataLen;
-      if (labelLen < 2) continue;
-
-      chartByProduk[k.nama] = {
-        'x': List<int>.generate(labelLen, (i) => i),
-        'harga': normalizedHarga.take(labelLen).toList(),
-        'stok': normalizedStok.take(labelLen).toList(),
-      };
+    List<double> normalizePdfSeries(List<double> values) {
+      if (values.isEmpty) return const [];
+      final minV = values.reduce((a, b) => a < b ? a : b);
+      final maxV = values.reduce((a, b) => a > b ? a : b);
+      final span = maxV - minV;
+      if (span == 0) return List<double>.filled(values.length, 50);
+      return values.map((v) => ((v - minV) / span) * 100).toList();
     }
+
+    final kecamatanChartMap = <String, Map<String, dynamic>?>{};
+    for (final kec in stats.kecamatanTrend) {
+      final normalizedHarga = normalizePdfSeries(kec.hargaHarian);
+      final normalizedStok = normalizePdfSeries(kec.stokHarian);
+      var len = normalizedHarga.length;
+      if (normalizedStok.length < len) len = normalizedStok.length;
+      kecamatanChartMap[kec.nama] = len < 2
+          ? null
+          : {
+              'x': List<int>.generate(len, (i) => i),
+              'harga': normalizedHarga.take(len).toList(),
+              'stok': normalizedStok.take(len).toList(),
+            };
+    }
+
+    final komoditasAnalyticsRows = stats.komoditasTrend
+        .expand((kom) {
+          if (kom.luasLahanByKecamatan.isEmpty) return const [];
+
+          return kom.luasLahanByKecamatan.map((luas) {
+            return {
+              'kecamatan': luas.kecamatanNama,
+              'komoditas': kom.nama,
+              'avg_harga': kom.avgHarga,
+              'stok_total': kom.totalStok,
+              'luas_lahan': luas.luasHa,
+              'chart': kecamatanChartMap[luas.kecamatanNama],
+            };
+          });
+        })
+        .where(
+          (row) =>
+              (row['luas_lahan'] as double) > 0 ||
+              (row['stok_total'] as double) > 0 ||
+              (row['avg_harga'] as double) > 0,
+        )
+        .toList()
+      ..sort((a, b) {
+        final kecA = (a['kecamatan'] as String).toLowerCase();
+        final kecB = (b['kecamatan'] as String).toLowerCase();
+        final kecCmp = kecA.compareTo(kecB);
+        if (kecCmp != 0) return kecCmp;
+        final komA = (a['komoditas'] as String).toLowerCase();
+        final komB = (b['komoditas'] as String).toLowerCase();
+        return komA.compareTo(komB);
+      });
 
     doc.addPage(
       pw.MultiPage(
@@ -878,7 +900,7 @@ class _LaporanPageState extends State<LaporanPage>
                 ),
                 pw.SizedBox(height: 4),
                 pw.Text(
-                  'Kabupaten Lamongan - $dateStr',
+                  'Kabupaten Lamongan ? $dateStr',
                   style: const pw.TextStyle(
                     fontSize: 10,
                     color: PdfColors.white,
@@ -921,19 +943,24 @@ class _LaporanPageState extends State<LaporanPage>
           ),
           pw.SizedBox(height: 12),
           pw.Text(
-            'Analitik Produk: Stok, Luas Lahan, Harga, dan Tren',
+            'Analitik Kecamatan: Komoditas, Harga, Stok, Luas Lahan, dan Grafik',
             style: pw.TextStyle(
               fontSize: 12,
               fontWeight: pw.FontWeight.bold,
             ),
           ),
           pw.SizedBox(height: 4),
-          if (stats.komoditasTrend.isEmpty)
+          if (komoditasAnalyticsRows.isEmpty)
             pw.Text(
-              'Data analitik komoditas belum tersedia.',
+              'Data luas lahan per komoditas/kecamatan belum tersedia.',
               style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey),
             )
           else ...[
+            pw.Text(
+              'Data disusun per kecamatan dan komoditas. Grafik garis membandingkan pola harga dan stok komoditas.',
+              style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey700),
+            ),
+            pw.SizedBox(height: 4),
             pw.Row(
               children: [
                 pw.Container(width: 12, height: 2, color: PdfColors.blue700),
@@ -950,11 +977,12 @@ class _LaporanPageState extends State<LaporanPage>
               border: pw.TableBorder.all(color: PdfColors.grey400),
               defaultVerticalAlignment: pw.TableCellVerticalAlignment.middle,
               columnWidths: {
-                0: const pw.FlexColumnWidth(2.0),
-                1: const pw.FlexColumnWidth(1.2),
-                2: const pw.FlexColumnWidth(1.1),
-                3: const pw.FlexColumnWidth(1.3),
-                4: const pw.FlexColumnWidth(2.1),
+                0: const pw.FlexColumnWidth(1.2),
+                1: const pw.FlexColumnWidth(1.1),
+                2: const pw.FlexColumnWidth(1.0),
+                3: const pw.FlexColumnWidth(1.0),
+                4: const pw.FlexColumnWidth(1.0),
+                5: const pw.FlexColumnWidth(1.9),
               },
               children: [
                 pw.TableRow(
@@ -963,7 +991,30 @@ class _LaporanPageState extends State<LaporanPage>
                     pw.Padding(
                       padding: const pw.EdgeInsets.all(5),
                       child: pw.Text(
-                        'Produk',
+                        'Kecamatan',
+                        style: pw.TextStyle(
+                          fontSize: 9,
+                          color: PdfColors.white,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.all(5),
+                      child: pw.Text(
+                        'Komoditas',
+                        style: pw.TextStyle(
+                          fontSize: 9,
+                          color: PdfColors.white,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    pw.Padding(
+                      padding: const pw.EdgeInsets.all(5),
+                      child: pw.Text(
+                        'Harga',
+                        textAlign: pw.TextAlign.right,
                         style: pw.TextStyle(
                           fontSize: 9,
                           color: PdfColors.white,
@@ -986,19 +1037,7 @@ class _LaporanPageState extends State<LaporanPage>
                     pw.Padding(
                       padding: const pw.EdgeInsets.all(5),
                       child: pw.Text(
-                        'Luas Lahan (ha)',
-                        textAlign: pw.TextAlign.right,
-                        style: pw.TextStyle(
-                          fontSize: 9,
-                          color: PdfColors.white,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    pw.Padding(
-                      padding: const pw.EdgeInsets.all(5),
-                      child: pw.Text(
-                        'Rata-rata Harga',
+                        'Luas Lahan',
                         textAlign: pw.TextAlign.right,
                         style: pw.TextStyle(
                           fontSize: 9,
@@ -1011,6 +1050,7 @@ class _LaporanPageState extends State<LaporanPage>
                       padding: const pw.EdgeInsets.all(5),
                       child: pw.Text(
                         'Grafik',
+                        textAlign: pw.TextAlign.center,
                         style: pw.TextStyle(
                           fontSize: 9,
                           color: PdfColors.white,
@@ -1020,21 +1060,31 @@ class _LaporanPageState extends State<LaporanPage>
                     ),
                   ],
                 ),
-                ...stats.komoditasTrend.map((k) {
-                  final chart = chartByProduk[k.nama];
+                ...komoditasAnalyticsRows.map((row) {
+                  final luasLahan = row['luas_lahan'] as double;
+                  final avgHarga = row['avg_harga'] as double;
+                  final stokTotal = row['stok_total'] as double;
+                  final chart = row['chart'] as Map<String, dynamic>?;
                   return pw.TableRow(
                     children: [
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
                         child: pw.Text(
-                          k.nama,
+                          row['kecamatan'] as String,
                           style: const pw.TextStyle(fontSize: 8),
                         ),
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
                         child: pw.Text(
-                          numFmt.format(k.totalStok),
+                          row['komoditas'] as String,
+                          style: const pw.TextStyle(fontSize: 8),
+                        ),
+                      ),
+                      pw.Padding(
+                        padding: const pw.EdgeInsets.all(4),
+                        child: pw.Text(
+                          numFmt.format(avgHarga),
                           textAlign: pw.TextAlign.right,
                           style: const pw.TextStyle(fontSize: 8),
                         ),
@@ -1042,7 +1092,7 @@ class _LaporanPageState extends State<LaporanPage>
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
                         child: pw.Text(
-                          numFmt.format(k.luasLahan),
+                          numFmt.format(stokTotal),
                           textAlign: pw.TextAlign.right,
                           style: const pw.TextStyle(fontSize: 8),
                         ),
@@ -1050,7 +1100,7 @@ class _LaporanPageState extends State<LaporanPage>
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
                         child: pw.Text(
-                          numFmt.format(k.avgHarga),
+                          numFmt.format(luasLahan),
                           textAlign: pw.TextAlign.right,
                           style: const pw.TextStyle(fontSize: 8),
                         ),
@@ -1060,13 +1110,14 @@ class _LaporanPageState extends State<LaporanPage>
                         child: chart == null
                             ? pw.Text(
                                 '-',
+                                textAlign: pw.TextAlign.center,
                                 style: const pw.TextStyle(
                                   fontSize: 8,
                                   color: PdfColors.grey600,
                                 ),
                               )
                             : pw.SizedBox(
-                                height: 52,
+                                height: 40,
                                 child: pw.Chart(
                                   grid: pw.CartesianGrid(
                                     xAxis: pw.FixedAxis<int>(
@@ -1077,7 +1128,7 @@ class _LaporanPageState extends State<LaporanPage>
                                       divisions: false,
                                     ),
                                     yAxis: pw.FixedAxis<double>(
-                                      const [-5, 50, 105],
+                                      const [0, 50, 100],
                                       buildLabel: (_) => pw.SizedBox(),
                                       ticks: false,
                                       axisTick: false,
@@ -1240,7 +1291,7 @@ class _LaporanPageState extends State<LaporanPage>
     );
   }
 
-  // â”€â”€ KPI Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // KPI Card
   Widget _kpiCard(
     String label,
     String value,

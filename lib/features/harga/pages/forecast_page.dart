@@ -39,6 +39,8 @@ class _ForecastPageState extends State<ForecastPage> {
   String? _error;
 
   List<double> _predictions = [];
+  List<int> _anomalyIndexes = [];
+  List<Map<String, dynamic>> _anomalyDetails = [];
   String _trend = '';
 
   String get _selectedKomoditasName {
@@ -83,6 +85,10 @@ class _ForecastPageState extends State<ForecastPage> {
   double get _maxPrediction =>
       _predictions.isEmpty ? 0 : _predictions.reduce(math.max);
 
+  bool get _hasAnomalies => _anomalyIndexes.isNotEmpty;
+
+  int get _anomalyCount => _anomalyIndexes.length;
+
   @override
   void initState() {
     super.initState();
@@ -126,6 +132,8 @@ class _ForecastPageState extends State<ForecastPage> {
       _loadingForecast = true;
       _error = null;
       _predictions = [];
+      _anomalyIndexes = [];
+      _anomalyDetails = [];
     });
 
     try {
@@ -137,6 +145,21 @@ class _ForecastPageState extends State<ForecastPage> {
         _predictions = List<double>.from(
           (data['predictions'] as List).map((v) => (v as num).toDouble()),
         );
+        final rawAnomalies = data['anomaly_indexes'];
+        _anomalyIndexes = rawAnomalies is List
+            ? rawAnomalies
+                .whereType<num>()
+                .map((v) => v.toInt())
+                .where((v) => v >= 0)
+                .toList()
+            : <int>[];
+        final rawAnomalyDetails = data['anomaly_details'];
+        _anomalyDetails = rawAnomalyDetails is List
+            ? rawAnomalyDetails
+                .whereType<Map>()
+                .map((v) => Map<String, dynamic>.from(v))
+                .toList()
+            : <Map<String, dynamic>>[];
         _trend = data['trend'] as String? ?? '';
         _loadingForecast = false;
       });

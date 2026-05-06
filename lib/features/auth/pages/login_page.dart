@@ -1,8 +1,9 @@
-// Penjelasan file:
-// Feature: auth
-// Layer: ui
-// File: login_page
-// Fungsi utama: File ini mengatur tampilan halaman, komponen visual, dan interaksi pengguna.
+// Doc:
+// Tujuan: Menampilkan halaman login, validasi input dasar, dan navigasi setelah autentikasi.
+// Dipakai oleh: Route login sebelum pengguna masuk ke aplikasi mobile.
+// Dependensi utama: AuthBloc, GoRouter, Flutter Material, dan LoginRequested event.
+// Fungsi public/utama: LoginPage, _submit, _buildEmailField, _buildPasswordField, _buildLoginButton.
+// Side effect penting: Mengirim event login ke BLoC dan navigasi ke dashboard setelah berhasil.
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -180,7 +181,7 @@ class _LoginPageState extends State<LoginPage>
                     ),
                     const SizedBox(height: 16),
                     const Text(
-                      'SIPKAP Lamongan',
+                      'PanganKu',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 20,
@@ -189,7 +190,8 @@ class _LoginPageState extends State<LoginPage>
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Sistem Informasi Ketahanan Pangan',
+                      'Sistem Informasi Ketahanan Pangan\nKabupaten Lamongan',
+                      textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.8),
                         fontSize: 12,
@@ -346,7 +348,7 @@ class _LoginPageState extends State<LoginPage>
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: () {},
+              onPressed: () => context.go('/forgot-password'),
               style: TextButton.styleFrom(
                 padding: EdgeInsets.zero,
                 minimumSize: const Size(0, 0),
@@ -422,7 +424,7 @@ class _LoginPageState extends State<LoginPage>
           const SizedBox(height: 24),
           Center(
             child: Text(
-              'Â© 2024 Dinas Ketahanan Pangan Kab. Lamongan',
+              '(c) 2024 Dinas Ketahanan Pangan Kab. Lamongan',
               style: TextStyle(fontSize: 10, color: Colors.grey[400]),
             ),
           ),

@@ -1,6 +1,8 @@
 // Widget untuk menampilkan gambar komoditas dengan fallback ke emoji
 import 'package:flutter/material.dart';
 
+import '../constants/app_constants.dart';
+
 class KomoditasImage extends StatelessWidget {
   final String? gambarUrl;
   final String nama;
@@ -36,14 +38,10 @@ class KomoditasImage extends StatelessWidget {
   Widget _buildContent() {
     // Jika ada gambar URL dan valid, tampilkan gambar
     if (gambarUrl != null && gambarUrl!.isNotEmpty) {
-      // Ambil base URL dari environment atau gunakan default
-      const baseUrl = String.fromEnvironment(
-        'API_BASE_URL',
-        defaultValue: 'http://localhost:8080',
-      );
-
-      final fullUrl =
-          gambarUrl!.startsWith('http') ? gambarUrl! : '$baseUrl$gambarUrl';
+      final imagePath = gambarUrl!;
+      final fullUrl = imagePath.startsWith('http')
+          ? imagePath
+          : '${AppConstants.apiOrigin}${imagePath.startsWith('/') ? '' : '/'}$imagePath';
 
       return Image.network(
         fullUrl,

@@ -1,8 +1,9 @@
-// Penjelasan file:
-// Feature: admin
-// Layer: ui
-// File: stok_admin_page
-// Fungsi utama: File ini mengatur tampilan halaman, komponen visual, dan interaksi pengguna.
+// Doc:
+// Tujuan: Menampilkan halaman admin stok untuk filter, tambah, edit, hapus, dan evaluasi status stok pangan.
+// Dipakai oleh: Route admin stok dari menu administrasi aplikasi mobile.
+// Dependensi utama: AdminRepository, DioException, Flutter Material, Bloc context, dan formatter intl.
+// Fungsi public/utama: StokAdminPage, _loadData, _create, _update, _delete, _showForm, _buildTile.
+// Side effect penting: HTTP read/write data stok dan render status stok dari backend.
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -214,7 +215,7 @@ class _StokAdminPageState extends State<StokAdminPage> {
           border: Border.all(color: Colors.red.withValues(alpha: 0.4)),
         ),
         child: Text(
-          '$kritis kritis â€¢ $waspada waspada â€¢ $aman aman',
+          '$kritis kritis - $waspada waspada - $aman aman',
           style: const TextStyle(
             fontSize: 10,
             color: Colors.white,
@@ -530,7 +531,7 @@ class _StokAdminPageState extends State<StokAdminPage> {
   }
 }
 
-// â”€â”€ Form Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Form Sheet
 class _StokFormSheet extends StatefulWidget {
   final List<Map<String, dynamic>> komoditasList;
   final List<Map<String, dynamic>> kecamatanList;
@@ -724,7 +725,7 @@ class _StokFormSheetState extends State<_StokFormSheet> {
                         if (val == null || val <= 0) return 'Nilai tidak valid';
                         final stok = double.tryParse(_stokCtrl.text) ?? 0;
                         if (stok > val) {
-                          return 'Kapasitas harus â‰¥ stok saat ini';
+                          return 'Kapasitas harus >= stok saat ini';
                         }
                         return null;
                       },
@@ -784,7 +785,7 @@ class _StokFormSheetState extends State<_StokFormSheet> {
   }
 }
 
-// â”€â”€ Empty State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Empty State
 class _EmptyState extends StatelessWidget {
   const _EmptyState();
 

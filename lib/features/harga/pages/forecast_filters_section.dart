@@ -30,6 +30,8 @@ extension _ForecastFilterSection on _ForecastPageState {
       children: [
         _buildHeroCard(),
         const SizedBox(height: 16),
+        _buildAnomalyCard(),
+        const SizedBox(height: 16),
         _buildStatsGrid(),
         const SizedBox(height: 16),
         _buildChart(),
@@ -105,6 +107,8 @@ extension _ForecastFilterSection on _ForecastPageState {
               setState(() {
                 _selectedKomoditasId = v;
                 _predictions = [];
+                _anomalyIndexes = [];
+                _anomalyDetails = [];
                 _error = null;
               });
             },
@@ -138,6 +142,8 @@ extension _ForecastFilterSection on _ForecastPageState {
               setState(() {
                 _selectedKecamatanId = v;
                 _predictions = [];
+                _anomalyIndexes = [];
+                _anomalyDetails = [];
                 _error = null;
               });
             },

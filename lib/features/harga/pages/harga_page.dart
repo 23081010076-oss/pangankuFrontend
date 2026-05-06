@@ -30,6 +30,7 @@ class HargaPage extends StatefulWidget {
 
 class _HargaPageState extends State<HargaPage> {
   String _selectedKategori = 'Semua';
+  String _selectedKecamatan = 'Semua Kecamatan';
   String _searchQuery = '';
   final _searchCtrl = TextEditingController();
   DateTime? _lastUpdatedAt;
@@ -118,9 +119,13 @@ class _HargaPageState extends State<HargaPage> {
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: LastUpdatedBadge(timestamp: _lastUpdatedAt),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          LastUpdatedBadge(timestamp: _lastUpdatedAt),
+                          if (state is HargaLoaded)
+                            _buildKecamatanDropdown(state.hargaList),
+                        ],
                       ),
                     ),
                   ),
@@ -237,6 +242,51 @@ class _HargaPageState extends State<HargaPage> {
     );
   }
 
+  Widget _buildKecamatanDropdown(List<HargaItem> items) {
+    final listKecamatan = items
+        .map((e) => e.kecamatanNama)
+        .where((name) => name.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+    
+    final options = ['Semua Kecamatan', ...listKecamatan];
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _selectedKecamatan,
+          isDense: true,
+          icon: const Icon(Icons.arrow_drop_down, color: Color(0xFF2E7D32)),
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF2E7D32),
+          ),
+          onChanged: (String? newValue) {
+            if (newValue != null) {
+              setState(() {
+                _selectedKecamatan = newValue;
+              });
+            }
+          },
+          items: options.map<DropdownMenuItem<String>>((String value) {
+            return DropdownMenuItem<String>(
+              value: value,
+              child: Text(value),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
   Widget _buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -321,6 +371,9 @@ class _HargaPageState extends State<HargaPage> {
     bool canDelete,
   ) {
     var items = state.hargaList;
+    if (_selectedKecamatan != 'Semua Kecamatan') {
+      items = items.where((i) => i.kecamatanNama == _selectedKecamatan).toList();
+    }
     if (_selectedKategori != 'Semua') {
       items = items.where((i) => i.kategori == _selectedKategori).toList();
     }

@@ -3,7 +3,7 @@
 // Dipakai oleh: Halaman admin komoditas, harga, stok, kecamatan, dan luas lahan.
 // Dependensi utama: DioClient dan endpoint backend admin/master data.
 // Fungsi public/utama: fetchKomoditas, createKomoditas, updateKomoditas, deleteKomoditas, fetchKecamatan, create/update/delete modul admin lain.
-// Side effect penting: HTTP GET/POST/PUT/DELETE ke API backend; write pada master data komoditas/kecamatan/harga/stok/luas lahan.
+// Side effect penting: HTTP GET/POST/PUT/DELETE dan multipart upload foto; write pada master data komoditas/kecamatan/harga/stok/luas lahan.
 import 'package:dio/dio.dart';
 
 import '../../../core/network/dio_client.dart';
@@ -250,9 +250,9 @@ class AdminRepository {
 
 // Method ini mengunggah file foto ke backend dan mengembalikan URL gambar.
   Future<String> uploadFoto(String filePath) async {
-    final fileName = filePath.split('/').last;
+    final fileName = filePath.split(RegExp(r'[/\\]')).last;
     final formData = FormData.fromMap({
-      'file': await MultipartFile.fromFile(filePath, filename: fileName),
+      'foto': await MultipartFile.fromFile(filePath, filename: fileName),
     });
 
     final response = await _client.dio.post(

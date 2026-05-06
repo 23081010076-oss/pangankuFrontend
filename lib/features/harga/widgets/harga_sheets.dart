@@ -1,8 +1,9 @@
-// Penjelasan file:
-// Feature: harga
-// Layer: ui
-// File: harga_sheets
-// Fungsi utama: File ini mengatur tampilan halaman, komponen visual, dan interaksi pengguna.
+// Doc:
+// Tujuan: Menyediakan bottom sheet detail dan form tambah harga pada fitur monitoring harga.
+// Dipakai oleh: harga_page.dart melalui part widget sheet harga.
+// Dependensi utama: HargaBloc, Flutter Material, formatter intl, dan data harga komoditas.
+// Fungsi public/utama: _HargaDetailSheet, _TambahHargaSheet, _buildHeader, _submit.
+// Side effect penting: Mengirim event tambah harga dan menampilkan detail harga dari state BLoC.
 part of '../pages/harga_page.dart';
 
 class _HargaDetailSheet extends StatefulWidget {
@@ -439,7 +440,7 @@ class _HargaDetailSheetState extends State<_HargaDetailSheet> {
   }
 }
 
-// â”€â”€ Tambah Harga Sheet â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Tambah Harga Sheet
 class _TambahHargaSheet extends StatefulWidget {
   const _TambahHargaSheet();
 

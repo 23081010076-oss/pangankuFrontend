@@ -104,7 +104,7 @@ class _KomoditasAdminPageState extends State<KomoditasAdminPage> {
       builder: (ctx) => AlertDialog(
         title: const Text('Hapus Komoditas'),
         content:
-            Text('Hapus "$nama"? Data harga terkait juga akan terpengaruh.'),
+            Text('Hapus "$nama"- Data harga terkait juga akan terpengaruh.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -290,39 +290,77 @@ class _KomoditasAdminPageState extends State<KomoditasAdminPage> {
                         decoration: InputDecoration(
                           labelText: 'URL Gambar',
                           prefixIcon: const Icon(Icons.image_outlined),
-                          suffixIcon: IconButton(
-                            icon: const Icon(Icons.photo_library),
-                            tooltip: 'Pilih dari Galeri',
-                            onPressed: () async {
-                              final picker = ImagePicker();
-                              final pickedFile = await picker.pickImage(
-                                source: ImageSource.gallery,
-                              );
-                              if (pickedFile != null && context.mounted) {
-                                showDialog(
-                                  context: context,
-                                  barrierDismissible: false,
-                                  builder: (_) => const Center(
-                                    child: CircularProgressIndicator(),
-                                  ),
-                                );
-                                try {
-                                  final url = await _repository
-                                      .uploadFoto(pickedFile.path);
-                                  gambarCtrl.text = url;
-                                } catch (e) {
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Gagal upload gambar'),
+                          suffixIcon: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (gambarCtrl.text.isNotEmpty)
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline,
+                                      color: Colors.red),
+                                  tooltip: 'Hapus Gambar',
+                                  onPressed: () {
+                                    gambarCtrl.clear();
+                                  },
+                                ),
+                              IconButton(
+                                icon: const Icon(Icons.photo_library),
+                                tooltip: 'Pilih dari Galeri',
+                                onPressed: () async {
+                                  // Kompresi kualitas diturunkan agar lebih cepat (imageQuality: 50) 
+                                  // dan image size dibatasi resolusinya agar tidak memberatkan memori.
+                                  final picker = ImagePicker();
+                                  final pickedFile = await picker.pickImage(
+                                    source: ImageSource.gallery,
+                                    imageQuality: 70,
+                                    maxWidth: 800,
+                                    maxHeight: 800,
+                                  );
+                                  if (pickedFile != null && context.mounted) {
+                                    showDialog(
+                                      context: context,
+                                      barrierDismissible: false,
+                                      builder: (_) => const Center(
+                                        child: CircularProgressIndicator(),
                                       ),
                                     );
+                                    try {
+                                      final url = await _repository
+                                          .uploadFoto(pickedFile.path);
+                                      gambarCtrl.text = url;
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'Upload selesai. Tekan Simpan Perubahan.',
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    } on DioException catch (e) {
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text(
+                                              _repository.getErrorMessage(
+                                                e,
+                                                fallback:
+                                                    'Gagal upload gambar',
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    } finally {
+                                      if (context.mounted) {
+                                        Navigator.pop(context);
+                                      }
+                                    }
                                   }
-                                } finally {
-                                  if (context.mounted) Navigator.pop(context);
-                                }
-                              }
-                            },
+                                },
+                              ),
+                            ],
                           ),
                           hintText: 'https://... atau /uploads/namafile.jpg',
                         ),
@@ -486,7 +524,7 @@ class _KomoditasAdminPageState extends State<KomoditasAdminPage> {
           style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
         ),
         subtitle: Text(
-          '${satuan.isNotEmpty ? satuan : '-'}${kategori.isNotEmpty ? ' Â· $kategori' : ''}',
+          '${satuan.isNotEmpty ? satuan : '-'}${kategori.isNotEmpty ? ' - $kategori' : ''}',
           style: const TextStyle(fontSize: 12, color: Colors.grey),
         ),
         trailing: Row(

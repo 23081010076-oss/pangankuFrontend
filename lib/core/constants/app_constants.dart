@@ -26,7 +26,8 @@ class AppConstants {
 
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
-        // Android Emulator memakai 10.0.2.2 untuk mengarah ke host machine.
+        // Android emulator memakai 10.0.2.2 untuk mengarah ke host machine.
+        // Untuk HP fisik, jalankan dengan --dart-define API_BASE_URL.
         return 'http://10.0.2.2:8080/api/v1';
       case TargetPlatform.iOS:
       case TargetPlatform.macOS:
@@ -35,6 +36,14 @@ class AppConstants {
       case TargetPlatform.fuchsia:
         return 'http://localhost:8080/api/v1';
     }
+  }
+
+  static String get apiOrigin {
+    final url = baseUrl;
+    if (url.endsWith('/api/v1')) {
+      return url.substring(0, url.length - '/api/v1'.length);
+    }
+    return url;
   }
 
   static String _trimTrailingSlash(String value) {

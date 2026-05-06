@@ -1,8 +1,9 @@
-// Penjelasan file:
-// Feature: admin
-// Layer: ui
-// File: luas_lahan_admin_page
-// Fungsi utama: File ini mengatur tampilan halaman, komponen visual, dan interaksi pengguna.
+// Doc:
+// Tujuan: Menampilkan halaman admin luas lahan untuk filter, tambah, edit, hapus, dan ringkasan lahan per komoditas/kecamatan.
+// Dipakai oleh: Route admin luas lahan dari menu administrasi aplikasi mobile.
+// Dependensi utama: AdminRepository, DioException, Flutter Material, Bloc context, dan formatter intl.
+// Fungsi public/utama: LuasLahanAdminPage, _loadData, _create, _update, _delete, _showForm, _buildTile.
+// Side effect penting: HTTP read/write data luas lahan dan render agregasi lahan dari backend.
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -130,7 +131,7 @@ class _LuasLahanAdminPageState extends State<LuasLahanAdminPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Hapus Luas Lahan'),
-        content: Text('Hapus data $komoditas - $kecamatan ($tahun)?'),
+        content: Text('Hapus data $komoditas ? $kecamatan ($tahun)-'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),

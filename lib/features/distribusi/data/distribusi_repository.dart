@@ -37,6 +37,30 @@ class DistribusiRepository {
         .toList();
   }
 
+// Method ini mengambil rekomendasi alokasi surplus-defisit dari Greedy Allocation backend.
+  Future<List<Map<String, dynamic>>> fetchGreedyRecommendations({
+    String? komoditasId,
+  }) async {
+    final response = await _client.dio.get(
+      '/distribusi/rekomendasi',
+      queryParameters: {
+        if (komoditasId != null && komoditasId.isNotEmpty)
+          'komoditas_id': komoditasId,
+      },
+    );
+    final data = response.data;
+    final list = data is Map ? (data['data'] ?? []) : data ?? [];
+
+    if (list is! List) {
+      return [];
+    }
+
+    return list
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+  }
+
 // Method ini mengirim request untuk menambahkan data baru ke backend.
   Future<void> createDistribusi({
     required String dariKecamatanId,

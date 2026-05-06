@@ -180,6 +180,219 @@ extension _ForecastResultSection on _ForecastPageState {
     );
   }
 
+  Widget _buildAnomalyCard() {
+    final color =
+        _hasAnomalies ? const Color(0xFFC62828) : const Color(0xFF2E7D32);
+    final bg =
+        _hasAnomalies ? const Color(0xFFFFEBEE) : const Color(0xFFE8F5E9);
+    final icon =
+        _hasAnomalies ? Icons.warning_amber_rounded : Icons.verified_outlined;
+    final title =
+        _hasAnomalies ? 'Anomali Harga Terdeteksi' : 'Tidak Ada Anomali Harga';
+    final subtitle = _hasAnomalies
+        ? '$_anomalyCount data historis melewati ambang 2 standar deviasi.'
+        : 'Data historis berada dalam batas variasi normal.';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.16)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: color, size: 24),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF263238),
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.09),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        '$_anomalyCount titik',
+                        style: TextStyle(
+                          color: color,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.4,
+                    color: Colors.grey[700],
+                  ),
+                ),
+                if (_hasAnomalies) ...[
+                  const SizedBox(height: 12),
+                  if (_anomalyDetails.isNotEmpty)
+                    Column(
+                      children: [
+                        for (final detail in _anomalyDetails.take(3))
+                          _anomalyDetailRow(detail, color),
+                        if (_anomalyDetails.length > 3)
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: _anomalyMorePill(
+                              _anomalyDetails.length - 3,
+                              color,
+                            ),
+                          ),
+                      ],
+                    )
+                  else
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final index in _anomalyIndexes.take(6))
+                          _anomalyIndexPill(index, color),
+                        if (_anomalyIndexes.length > 6)
+                          _anomalyMorePill(_anomalyIndexes.length - 6, color),
+                      ],
+                    ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _anomalyDetailRow(Map<String, dynamic> detail, Color color) {
+    final harga = (detail['harga_per_kg'] as num?)?.toDouble();
+    final tanggal = _formatAnomalyDate(detail['tanggal']);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.12)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.calendar_today_outlined, size: 14, color: color),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              tanggal,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF374151),
+              ),
+            ),
+          ),
+          if (harga != null)
+            Text(
+              'Rp ${_currencyFmt.format(harga)}',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: color,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  String _formatAnomalyDate(dynamic rawDate) {
+    final value = rawDate?.toString();
+    if (value == null || value.isEmpty) {
+      return 'Tanggal tidak tersedia';
+    }
+    final parsed = DateTime.tryParse(value);
+    if (parsed == null) {
+      return value;
+    }
+    return DateFormat('dd MMM yyyy', 'id').format(parsed);
+  }
+
+  Widget _anomalyIndexPill(int index, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.14)),
+      ),
+      child: Text(
+        'Data #${index + 1}',
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  Widget _anomalyMorePill(int count, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.14)),
+      ),
+      child: Text(
+        '+$count lainnya',
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
   Widget _buildStatCard(_StatCardData data) {
     return Container(
       padding: const EdgeInsets.all(16),

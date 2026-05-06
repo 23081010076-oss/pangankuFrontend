@@ -116,7 +116,11 @@ class _RegisterPageState extends State<RegisterPage>
                     child: Column(
                       children: [
                         const SizedBox(height: 20),
-                        const Text('ðŸŒ¾', style: TextStyle(fontSize: 52)),
+                        const Icon(
+                          Icons.eco_rounded,
+                          size: 52,
+                          color: Colors.white,
+                        ),
                         const SizedBox(height: 8),
                         const Text(
                           'PanganKu',

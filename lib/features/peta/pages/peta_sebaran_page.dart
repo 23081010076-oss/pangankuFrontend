@@ -13,6 +13,7 @@ import '../../analytics/bloc/analytics_bloc.dart';
 import '../../analytics/bloc/analytics_event.dart';
 import '../../analytics/bloc/analytics_state.dart';
 import '../../analytics/data/analytics_repository.dart';
+import '../data/lamongan_map_data.dart';
 
 class PetaSebaranPage extends StatelessWidget {
   const PetaSebaranPage({super.key});
@@ -367,10 +368,18 @@ class _PetaSebaranViewState extends State<_PetaSebaranView> {
             FlutterMap(
               mapController: _mapController,
               options: MapOptions(
-                initialCenter: const LatLng(-7.09, 112.33),
+                initialCenter: LamonganMapData.center,
+                initialCameraFit: CameraFit.bounds(
+                  bounds: LamonganMapData.bounds,
+                  padding: const EdgeInsets.all(28),
+                  maxZoom: 10.4,
+                ),
                 initialZoom: 10.0,
-                maxZoom: 17,
-                minZoom: 7,
+                cameraConstraint: CameraConstraint.containCenter(
+                  bounds: LamonganMapData.bounds,
+                ),
+                maxZoom: 18,
+                minZoom: 8,
                 onTap: (_, __) => setState(() => _selected = null),
               ),
               children: [
@@ -384,8 +393,9 @@ class _PetaSebaranViewState extends State<_PetaSebaranView> {
                     final color = _statusColor(item.statusStok);
                     final isSelected =
                         _selected?.kecamatanId == item.kecamatanId;
+                    final point = _markerPoint(item);
                     return Marker(
-                      point: LatLng(item.lat, item.lng),
+                      point: point,
                       width: 88,
                       height: 42,
                       child: GestureDetector(
@@ -446,6 +456,31 @@ class _PetaSebaranViewState extends State<_PetaSebaranView> {
                   }).toList(),
                 ),
               ],
+            ),
+            Positioned(
+              top: 12,
+              right: 12,
+              child: Tooltip(
+                message: 'Kembalikan ke Kabupaten Lamongan',
+                child: Material(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  elevation: 4,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: _fitLamonganBounds,
+                    child: const SizedBox(
+                      width: 42,
+                      height: 42,
+                      child: Icon(
+                        Icons.my_location_rounded,
+                        color: Color(0xFF006064),
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
             if (_selected != null)
               Positioned(
@@ -630,7 +665,7 @@ class _PetaSebaranViewState extends State<_PetaSebaranView> {
                       _selected = isSelected ? null : k;
                     });
                     if (!isSelected) {
-                      _mapController.move(LatLng(k.lat, k.lng), 12.0);
+                      _mapController.move(_markerPoint(k), 12.0);
                     }
                   },
                   child: Container(
@@ -693,6 +728,24 @@ class _PetaSebaranViewState extends State<_PetaSebaranView> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  LatLng _markerPoint(StatusPanganItem item) {
+    return LamonganMapData.resolvePoint(
+      kecamatanName: item.kecamatanNama,
+      lat: item.lat,
+      lng: item.lng,
+    );
+  }
+
+  void _fitLamonganBounds() {
+    _mapController.fitCamera(
+      CameraFit.bounds(
+        bounds: LamonganMapData.bounds,
+        padding: const EdgeInsets.all(28),
+        maxZoom: 10.4,
       ),
     );
   }
