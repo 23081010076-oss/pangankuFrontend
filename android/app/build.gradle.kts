@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.example.panganku_mobile"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

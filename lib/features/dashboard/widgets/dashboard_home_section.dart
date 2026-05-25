@@ -286,7 +286,7 @@ class _HomePage extends StatelessWidget {
           },
         ];
         return SizedBox(
-          height: 176,
+          height: 196,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),

@@ -581,7 +581,6 @@ extension _AnalyticsPageSections on _AnalyticsPageState {
                   ),
                   const SizedBox(height: 10),
                   _chartCard(
-                    height: 248,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [

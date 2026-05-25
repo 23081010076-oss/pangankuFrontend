@@ -609,7 +609,7 @@ class _AnalyticsPageState extends State<AnalyticsPage>
     );
   }
 
-  Widget _chartCard({required Widget child, double height = 260}) {
+  Widget _chartCard({required Widget child, double? height}) {
     return Container(
       height: height,
       padding: const EdgeInsets.all(14),
