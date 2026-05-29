@@ -31,6 +31,8 @@ class DistribusiPage extends StatefulWidget {
 }
 
 class _DistribusiPageState extends State<DistribusiPage> {
+  static const _allKomoditasId = 'semua';
+
   String _selectedStatus = 'semua';
   int? _expandedIndex;
   final Map<String, _RuteData> _ruteCache = {};
@@ -39,8 +41,12 @@ class _DistribusiPageState extends State<DistribusiPage> {
   final List<_GreedyRecommendation> _greedyRecommendations = [];
   bool _loadingGreedyRecommendations = false;
   String? _greedyRecommendationError;
+  String _selectedGreedyKomoditas = _allKomoditasId;
+  bool _loadingGreedyKomoditas = true;
+  List<Map<String, dynamic>> _greedyKomoditasList = [];
   late final DistribusiRepository _distribusiRepository;
   late final KecamatanRepository _kecamatanRepository;
+  late final MasterDataRepository _masterDataRepository;
   Map<String, LatLng>? _kecamatanCoords;
   DateTime? _lastUpdatedAt;
 
@@ -49,6 +55,8 @@ class _DistribusiPageState extends State<DistribusiPage> {
     super.initState();
     _distribusiRepository = context.read<DistribusiRepository>();
     _kecamatanRepository = context.read<KecamatanRepository>();
+    _masterDataRepository = context.read<MasterDataRepository>();
+    _loadGreedyKomoditasOptions();
     _loadGreedyRecommendations();
   }
 
@@ -132,7 +140,12 @@ class _DistribusiPageState extends State<DistribusiPage> {
     });
 
     try {
-      final data = await _distribusiRepository.fetchGreedyRecommendations();
+      final komoditasId = _selectedGreedyKomoditas == _allKomoditasId
+          ? null
+          : _selectedGreedyKomoditas;
+      final data = await _distribusiRepository.fetchGreedyRecommendations(
+        komoditasId: komoditasId,
+      );
       if (!mounted) return;
       setState(() {
         _greedyRecommendations
@@ -155,6 +168,27 @@ class _DistribusiPageState extends State<DistribusiPage> {
     } finally {
       if (mounted) {
         setState(() => _loadingGreedyRecommendations = false);
+      }
+    }
+  }
+
+  Future<void> _loadGreedyKomoditasOptions() async {
+    try {
+      final list = await _masterDataRepository.fetchKomoditas();
+      if (!mounted) return;
+      setState(() {
+        _greedyKomoditasList = list;
+        _loadingGreedyKomoditas = false;
+        if (_selectedGreedyKomoditas != _allKomoditasId &&
+            !_greedyKomoditasList.any(
+              (k) => k['id']?.toString() == _selectedGreedyKomoditas,
+            )) {
+          _selectedGreedyKomoditas = _allKomoditasId;
+        }
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() => _loadingGreedyKomoditas = false);
       }
     }
   }
@@ -574,6 +608,8 @@ class _DistribusiPageState extends State<DistribusiPage> {
               ],
             ),
             const SizedBox(height: 12),
+            _buildGreedyKomoditasDropdown(),
+            const SizedBox(height: 12),
             if (_loadingGreedyRecommendations)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 12),
@@ -611,6 +647,41 @@ class _DistribusiPageState extends State<DistribusiPage> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildGreedyKomoditasDropdown() {
+    final items = <DropdownMenuItem<String>>[
+      const DropdownMenuItem(
+        value: _allKomoditasId,
+        child: Text('Semua Komoditas'),
+      ),
+      ..._greedyKomoditasList.map(
+        (k) => DropdownMenuItem(
+          value: k['id']?.toString(),
+          child: Text(k['nama']?.toString() ?? ''),
+        ),
+      ),
+    ];
+
+    return DropdownButtonFormField<String>(
+      value: _selectedGreedyKomoditas,
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: 'Komoditas',
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      ),
+      items: items,
+      onChanged: _loadingGreedyKomoditas || _loadingGreedyRecommendations
+          ? null
+          : (value) {
+              if (value == null || value == _selectedGreedyKomoditas) {
+                return;
+              }
+              setState(() => _selectedGreedyKomoditas = value);
+              _loadGreedyRecommendations();
+            },
     );
   }
 
