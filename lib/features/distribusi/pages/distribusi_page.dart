@@ -665,7 +665,7 @@ class _DistribusiPageState extends State<DistribusiPage> {
     ];
 
     return DropdownButtonFormField<String>(
-      value: _selectedGreedyKomoditas,
+      initialValue: _selectedGreedyKomoditas,
       isExpanded: true,
       decoration: InputDecoration(
         labelText: 'Komoditas',

@@ -12,6 +12,8 @@ import 'package:flutter/foundation.dart'
 class AppConstants {
   static const String _configuredBaseUrl =
       String.fromEnvironment('API_BASE_URL');
+  static const String _configuredWebAdminUrl =
+      String.fromEnvironment('WEB_ADMIN_URL');
 
   // Auto-detect platform untuk baseUrl yang tepat
   static String get baseUrl {
@@ -26,8 +28,7 @@ class AppConstants {
 
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
-        // Android emulator memakai 10.0.2.2 untuk mengarah ke host machine.
-        // Untuk HP fisik, jalankan dengan --dart-define API_BASE_URL.
+        // Gunakan 10.0.2.2 untuk Android Studio Emulator
         return 'http://10.0.2.2:8080/api/v1';
       case TargetPlatform.iOS:
       case TargetPlatform.macOS:
@@ -44,6 +45,13 @@ class AppConstants {
       return url.substring(0, url.length - '/api/v1'.length);
     }
     return url;
+  }
+
+  static String get webAdminUrl {
+    if (_configuredWebAdminUrl.isNotEmpty) {
+      return _trimTrailingSlash(_configuredWebAdminUrl);
+    }
+    return 'http://localhost:8081';
   }
 
   static String _trimTrailingSlash(String value) {

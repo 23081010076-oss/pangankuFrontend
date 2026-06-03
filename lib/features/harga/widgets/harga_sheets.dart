@@ -457,6 +457,7 @@ class _TambahHargaSheetState extends State<_TambahHargaSheet> {
   bool _loadingOpts = true;
   List<Map<String, dynamic>> _komList = [];
   List<Map<String, dynamic>> _kecList = [];
+  bool _inputLagi = true; // Default aktif untuk input massal
 
   @override
   void initState() {
@@ -636,7 +637,19 @@ class _TambahHargaSheetState extends State<_TambahHargaSheet> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 8),
+                    CheckboxListTile(
+                      title: const Text('Lanjut Input Harga Lain'),
+                      subtitle: const Text('Kecamatan & Tanggal tidak direset'),
+                      value: _inputLagi,
+                      activeColor: const Color(0xFF2E7D32),
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      onChanged: (val) {
+                        setState(() => _inputLagi = val ?? true);
+                      },
+                    ),
+                    const SizedBox(height: 12),
                     BlocBuilder<HargaBloc, HargaState>(
                       builder: (ctx, bstate) => SizedBox(
                         width: double.infinity,
@@ -700,6 +713,22 @@ class _TambahHargaSheetState extends State<_TambahHargaSheet> {
             tanggal: tanggalUtc,
           ),
         );
-    Navigator.of(ctx).pop();
+        
+    if (!_inputLagi) {
+      Navigator.of(ctx).pop();
+    } else {
+      // Jika lanjut input, kosongkan komoditas dan harga namun biarkan modal tetap buka
+      setState(() {
+        _selKomoditas = null;
+        _hargaCtrl.clear();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Harga komoditas tersimpan!'),
+          backgroundColor: Color(0xFF2E7D32),
+          duration: Duration(seconds: 1),
+        ),
+      );
+    }
   }
 }

@@ -7,12 +7,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_event.dart';
 import '../../auth/bloc/auth_state.dart';
 import '../../profile/bloc/profile_bloc.dart';
 import '../../profile/bloc/profile_event.dart';
 import '../../profile/bloc/profile_state.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/repositories/kecamatan_repository.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -176,7 +178,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildBody(BuildContext ctx, dynamic profile, String role) {
-    final isAdmin = role == 'admin';
+    final canOpenWebAdmin = role == 'admin' || role == 'petugas';
 
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -207,39 +209,14 @@ class _ProfilePageState extends State<ProfilePage> {
             _infoCard(profile, role),
             const SizedBox(height: 16),
           ],
-          if (isAdmin) ...[
-            _sectionLabel('Manajemen Data'),
+          if (canOpenWebAdmin) ...[
+            _sectionLabel('Panel Admin'),
             const SizedBox(height: 8),
             _menuCard([
               _MenuItem(
-                icon: Icons.inventory_2_outlined,
-                label: 'Kelola Komoditas',
-                onTap: () => ctx.push('/admin/komoditas'),
-              ),
-              _MenuItem(
-                icon: Icons.location_city_outlined,
-                label: 'Kelola Kecamatan',
-                onTap: () => ctx.push('/admin/kecamatan'),
-              ),
-              _MenuItem(
-                icon: Icons.manage_accounts_outlined,
-                label: 'Kelola Pengguna',
-                onTap: () => ctx.push('/admin/users'),
-              ),
-              _MenuItem(
-                icon: Icons.warehouse_outlined,
-                label: 'Kelola Stok',
-                onTap: () => ctx.push('/admin/stok'),
-              ),
-              _MenuItem(
-                icon: Icons.price_change_outlined,
-                label: 'Kelola Harga',
-                onTap: () => ctx.push('/admin/harga'),
-              ),
-              _MenuItem(
-                icon: Icons.landscape_outlined,
-                label: 'Kelola Luas Lahan',
-                onTap: () => ctx.push('/admin/luas-lahan'),
+                icon: Icons.open_in_browser_outlined,
+                label: 'Buka Web Admin',
+                onTap: () => _openWebAdmin(ctx),
               ),
             ]),
             const SizedBox(height: 16),
@@ -308,9 +285,9 @@ class _ProfilePageState extends State<ProfilePage> {
       actions.insert(
         0,
         _MenuItem(
-          icon: Icons.landscape_outlined,
-          label: 'Luas Lahan',
-          onTap: () => ctx.push('/admin/luas-lahan'),
+          icon: Icons.open_in_browser_outlined,
+          label: 'Web Admin',
+          onTap: () => _openWebAdmin(ctx),
         ),
       );
     }
@@ -559,6 +536,19 @@ class _ProfilePageState extends State<ProfilePage> {
       applicationLegalese:
           'Sistem Informasi Ketahanan Pangan\nKabupaten Lamongan',
     );
+  }
+
+  Future<void> _openWebAdmin(BuildContext ctx) async {
+    final uri = Uri.parse(AppConstants.webAdminUrl);
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && ctx.mounted) {
+      ScaffoldMessenger.of(ctx).showSnackBar(
+        const SnackBar(
+          content: Text('Gagal membuka panel Web Admin'),
+          backgroundColor: Color(0xFFD32F2F),
+        ),
+      );
+    }
   }
 
   void _logout(BuildContext ctx) {

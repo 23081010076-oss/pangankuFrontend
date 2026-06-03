@@ -97,6 +97,7 @@ class HargaItem {
       id: normalizeUuid(json['id']),
       komoditasId: normalizeUuid(json['komoditas_id']),
       komoditasNama: json['komoditas_nama']?.toString() ??
+          (json['komoditas'] as Map?)?['nama']?.toString() ??
           (json['Komoditas'] as Map?)?['nama']?.toString() ??
           '',
       kategori: json['kategori']?.toString().isNotEmpty == true
@@ -105,12 +106,14 @@ class HargaItem {
       harga: (json['harga_per_kg'] ?? json['harga'] ?? 0).toDouble(),
       kecamatanId: normalizeUuid(json['kecamatan_id']),
       kecamatanNama: json['kecamatan_nama']?.toString() ??
+          (json['kecamatan'] as Map?)?['nama']?.toString() ??
           (json['Kecamatan'] as Map?)?['nama']?.toString() ??
           '',
       tanggal: json['tanggal']?.toString() ?? '',
       perubahanPersen: (json['perubahan_persen'] ?? 0).toDouble(),
       trend: json['trend']?.toString() ?? 'STABIL',
       gambarUrl: json['gambar_url']?.toString() ??
+          (json['komoditas'] as Map?)?['gambar_url']?.toString() ??
           (json['Komoditas'] as Map?)?['gambar_url']?.toString(),
     );
   }

@@ -619,6 +619,7 @@ class _UpsertStokSheetState extends State<_UpsertStokSheet> {
   bool _loadingOpts = true;
   List<Map<String, dynamic>> _komList = [];
   List<Map<String, dynamic>> _kecList = [];
+  bool _inputLagi = true; // Default aktif untuk input massal
 
   @override
   void initState() {
@@ -786,7 +787,21 @@ class _UpsertStokSheetState extends State<_UpsertStokSheet> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 8),
+                    // Hanya tampilkan jika sedang buat data baru (bukan edit)
+                    if (widget.initialItem == null)
+                      CheckboxListTile(
+                        title: const Text('Lanjut Input Stok Lain'),
+                        subtitle: const Text('Kecamatan tidak direset'),
+                        value: _inputLagi,
+                        activeColor: const Color(0xFF2E7D32),
+                        contentPadding: EdgeInsets.zero,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        onChanged: (val) {
+                          setState(() => _inputLagi = val ?? true);
+                        },
+                      ),
+                    const SizedBox(height: 12),
                     BlocBuilder<StokBloc, StokState>(
                       builder: (ctx, bstate) => SizedBox(
                         width: double.infinity,
@@ -836,6 +851,23 @@ class _UpsertStokSheetState extends State<_UpsertStokSheet> {
             kapasitasKg: double.parse(_kapasitasCtrl.text),
           ),
         );
-    Navigator.of(ctx).pop();
+        
+    // Jika menambah data baru dan ingin lanjut input lagi
+    if (widget.initialItem == null && _inputLagi) {
+      setState(() {
+        _selKomoditas = null;
+        _stokCtrl.clear();
+        _kapasitasCtrl.clear();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Stok tersimpan! Silakan input data selanjutnya.'),
+          backgroundColor: Color(0xFF2E7D32),
+          duration: Duration(seconds: 1),
+        ),
+      );
+    } else {
+      Navigator.of(ctx).pop();
+    }
   }
 }

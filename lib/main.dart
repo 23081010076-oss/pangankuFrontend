@@ -12,13 +12,6 @@ import 'package:panganku_mobile/core/network/dio_client.dart';
 import 'package:panganku_mobile/core/repositories/kecamatan_repository.dart';
 import 'package:panganku_mobile/core/repositories/master_data_repository.dart';
 import 'package:panganku_mobile/core/theme/app_theme.dart';
-import 'package:panganku_mobile/features/admin/data/admin_repository.dart';
-import 'package:panganku_mobile/features/admin/pages/harga_admin_page.dart';
-import 'package:panganku_mobile/features/admin/pages/kecamatan_admin_page.dart';
-import 'package:panganku_mobile/features/admin/pages/komoditas_admin_page.dart';
-import 'package:panganku_mobile/features/admin/pages/luas_lahan_admin_page.dart';
-import 'package:panganku_mobile/features/admin/pages/stok_admin_page.dart';
-import 'package:panganku_mobile/features/admin/pages/users_admin_page.dart';
 import 'package:panganku_mobile/features/analytics/bloc/analytics_bloc.dart';
 import 'package:panganku_mobile/features/analytics/bloc/analytics_event.dart';
 import 'package:panganku_mobile/features/analytics/data/analytics_repository.dart';
@@ -85,7 +78,6 @@ class MyApp extends StatelessWidget {
         RepositoryProvider(create: (_) => ProfileRepository(dioClient)),
         RepositoryProvider(create: (_) => MasterDataRepository(dioClient)),
         RepositoryProvider(create: (_) => KecamatanRepository(dioClient)),
-        RepositoryProvider(create: (_) => AdminRepository(dioClient)),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -222,34 +214,17 @@ final _router = GoRouter(
       ),
     ),
     GoRoute(
-      path: '/admin/komoditas',
-      builder: (context, state) => const KomoditasAdminPage(),
+      path: '/admin',
+      redirect: (context, state) => '/dashboard',
     ),
     GoRoute(
-      path: '/admin/kecamatan',
-      builder: (context, state) => const KecamatanAdminPage(),
-    ),
-    GoRoute(
-      path: '/admin/users',
-      builder: (context, state) => const UsersAdminPage(),
-    ),
-    GoRoute(
-      path: '/admin/stok',
-      builder: (context, state) => const StokAdminPage(),
-    ),
-    GoRoute(
-      path: '/admin/harga',
-      builder: (context, state) => const HargaAdminPage(),
-    ),
-    GoRoute(
-      path: '/admin/luas-lahan',
-      builder: (context, state) => const LuasLahanAdminPage(),
+      path: '/admin/:section',
+      redirect: (context, state) => '/dashboard',
     ),
   ],
   redirect: (context, state) {
     final authState = context.read<AuthBloc>().state;
     final isLoggedIn = authState is AuthAuthenticated;
-    final isAdmin = authState is AuthAuthenticated && authState.role == 'admin';
     final isAdminRoute = state.matchedLocation.startsWith('/admin/');
     final isLoggingIn = state.matchedLocation == '/login' ||
         state.matchedLocation == '/forgot-password' ||
@@ -262,7 +237,7 @@ final _router = GoRouter(
     if (isLoggedIn && isLoggingIn) {
       return '/dashboard';
     }
-    if (isAdminRoute && !isAdmin) {
+    if (isAdminRoute) {
       return '/dashboard';
     }
     return null;

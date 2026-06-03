@@ -69,7 +69,10 @@ class LaporanItem {
       id: json['id'] ?? '',
       jenisMasalah: json['jenis_masalah'] ?? '',
       deskripsi: json['deskripsi'] ?? '',
-      kecamatanNama: json['kecamatan_nama'] ?? json['Kecamatan']?['nama'] ?? '',
+      kecamatanNama: json['kecamatan_nama'] ?? 
+          json['kecamatan']?['nama'] ?? 
+          json['Kecamatan']?['nama'] ?? 
+          '',
       status: json['status'] ?? 'baru',
       prioritas: json['prioritas'] ?? 3,
       tanggal: json['created_at'] ?? '',
