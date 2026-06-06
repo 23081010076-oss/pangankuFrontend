@@ -92,7 +92,7 @@ class _HargaPageState extends State<HargaPage> {
         final role = authState is AuthAuthenticated ? authState.role : '';
         final canUpdate =
             role == 'admin' || role == 'petugas' || role == 'petani';
-        final canDelete = role == 'admin' || role == 'petugas';
+        final canDelete = role == 'admin';
 
         return LiveRefresh(
           interval: const Duration(seconds: 25),
@@ -249,9 +249,9 @@ class _HargaPageState extends State<HargaPage> {
         .toSet()
         .toList()
       ..sort();
-    
+
     final options = ['Semua Kecamatan', ...listKecamatan];
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
@@ -372,7 +372,8 @@ class _HargaPageState extends State<HargaPage> {
   ) {
     var items = state.hargaList;
     if (_selectedKecamatan != 'Semua Kecamatan') {
-      items = items.where((i) => i.kecamatanNama == _selectedKecamatan).toList();
+      items =
+          items.where((i) => i.kecamatanNama == _selectedKecamatan).toList();
     }
     if (_selectedKategori != 'Semua') {
       items = items.where((i) => i.kategori == _selectedKategori).toList();

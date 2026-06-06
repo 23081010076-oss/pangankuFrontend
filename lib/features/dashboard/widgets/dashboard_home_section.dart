@@ -533,12 +533,6 @@ class _HomePage extends StatelessWidget {
           ]
         : [
             {
-              'icon': Icons.inventory_2,
-              'label': 'Stok\nPangan',
-              'color': const Color(0xFFF57C00),
-              'index': 2,
-            },
-            {
               'icon': Icons.bar_chart_outlined,
               'label': 'Analitik\nPangan',
               'color': const Color(0xFF7B1FA2),
@@ -565,7 +559,7 @@ class _HomePage extends StatelessWidget {
         crossAxisCount: isPrivileged ? 3 : 3,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
-        childAspectRatio: isPrivileged ? 1.0 : 0.95,
+        childAspectRatio: 1.0,
       ),
       itemCount: menus.length,
       itemBuilder: (context, idx) {

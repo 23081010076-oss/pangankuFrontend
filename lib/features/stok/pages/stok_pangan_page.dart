@@ -33,6 +33,7 @@ class _StokPanganPageState extends State<StokPanganPage> {
     final authState = context.read<AuthBloc>().state;
     final role = authState is AuthAuthenticated ? authState.role : '';
     final canEdit = role == 'admin' || role == 'petugas';
+    final canDelete = role == 'admin';
 
     return BlocConsumer<StokBloc, StokState>(
       listener: (ctx, state) {
@@ -100,7 +101,7 @@ class _StokPanganPageState extends State<StokPanganPage> {
                   else if (state is StokError)
                     SliverFillRemaining(child: _buildError((state).message))
                   else if (state is StokLoaded)
-                    _buildList(state, canEdit)
+                    _buildList(state, canEdit, canDelete)
                   else
                     const SliverFillRemaining(child: SizedBox()),
                 ],
@@ -281,7 +282,7 @@ class _StokPanganPageState extends State<StokPanganPage> {
     );
   }
 
-  SliverList _buildList(StokLoaded state, bool canEdit) {
+  SliverList _buildList(StokLoaded state, bool canEdit, bool canDelete) {
     final byKec = _groupByKecamatan(state.items);
     final filtered = byKec.entries.where((e) {
       if (_selectedStatus == 'semua') return true;
@@ -314,6 +315,7 @@ class _StokPanganPageState extends State<StokPanganPage> {
           filtered[i].key,
           filtered[i].value,
           canEdit,
+          canDelete,
         ),
         childCount: filtered.length,
       ),
@@ -324,6 +326,7 @@ class _StokPanganPageState extends State<StokPanganPage> {
     String kecamatanNama,
     List<StokItem> items,
     bool canEdit,
+    bool canDelete,
   ) {
     final worst = _worstStatus(items);
     final statusColor = _statusColor(worst);
@@ -390,7 +393,7 @@ class _StokPanganPageState extends State<StokPanganPage> {
             padding: const EdgeInsets.all(12),
             child: Column(
               children: items
-                  .map((item) => _buildKomoditasRow(item, canEdit))
+                  .map((item) => _buildKomoditasRow(item, canEdit, canDelete))
                   .toList(),
             ),
           ),
@@ -399,7 +402,7 @@ class _StokPanganPageState extends State<StokPanganPage> {
     );
   }
 
-  Widget _buildKomoditasRow(StokItem item, bool canEdit) {
+  Widget _buildKomoditasRow(StokItem item, bool canEdit, bool canDelete) {
     final color = _statusColor(item.statusStok);
     final fmt = NumberFormat('#,##0', 'id');
 
@@ -466,22 +469,25 @@ class _StokPanganPageState extends State<StokPanganPage> {
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   ),
                 ),
-                TextButton.icon(
-                  onPressed: () => _confirmDeleteStok(context, item),
-                  icon: const Icon(
-                    Icons.delete_outline,
-                    size: 15,
-                    color: Color(0xFFC62828),
+                if (canDelete)
+                  TextButton.icon(
+                    onPressed: () => _confirmDeleteStok(context, item),
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      size: 15,
+                      color: Color(0xFFC62828),
+                    ),
+                    label: const Text(
+                      'Hapus',
+                      style: TextStyle(color: Color(0xFFC62828), fontSize: 12),
+                    ),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                    ),
                   ),
-                  label: const Text(
-                    'Hapus',
-                    style: TextStyle(color: Color(0xFFC62828), fontSize: 12),
-                  ),
-                  style: TextButton.styleFrom(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  ),
-                ),
               ],
             ),
           ],
@@ -851,7 +857,7 @@ class _UpsertStokSheetState extends State<_UpsertStokSheet> {
             kapasitasKg: double.parse(_kapasitasCtrl.text),
           ),
         );
-        
+
     // Jika menambah data baru dan ingin lanjut input lagi
     if (widget.initialItem == null && _inputLagi) {
       setState(() {

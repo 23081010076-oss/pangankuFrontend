@@ -2,8 +2,10 @@
 // Tujuan: Mengatur tampilan halaman laporan, komponen visual grafik tren, serta export PDF analitik semua komoditas per kecamatan.
 // Dipakai oleh: Route `/laporan` di main tab navigation.
 // Dependensi utama: LaporanBloc, AnalyticsBloc, fl_chart, pdf, printing.
-// Fungsi public/utama: LaporanPage, _buildRingkasan, _exportToPdf, agregasi harga/stok/luas lahan kecamatan untuk PDF.
+// Fungsi public/utama: LaporanPage, _buildRingkasan, _buildPdfBytes, agregasi harga/stok/luas lahan kecamatan untuk PDF.
 // Side effect penting: Interaksi user memicu fetch data laporan/dashboard; pembuatan dan share/preview dokumen PDF.
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -39,6 +41,7 @@ class _LaporanPageState extends State<LaporanPage>
   late final TabController _tabCtrl;
   String _periodeTren = 'Minggu';
   DateTime? _lastUpdatedAt;
+  bool _isGeneratingPdf = false;
 
   @override
   void initState() {
@@ -698,45 +701,171 @@ class _LaporanPageState extends State<LaporanPage>
   }
 
   Widget _buildCetakPdfButton(DashboardStats stats, List<LaporanItem> laporan) {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton.icon(
-        onPressed: () => _exportToPdf(stats, laporan, _periodeTren),
-        icon: const Icon(
-          Icons.print_outlined,
-          color: Color(0xFF2E7D32),
+    final onPressed = _isGeneratingPdf ? null : () {};
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: onPressed == null
+                    ? null
+                    : () => _downloadPdf(stats, laporan, _periodeTren),
+                icon: const Icon(Icons.download_outlined),
+                label: const Text('Download PDF'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF2E7D32),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: onPressed == null
+                    ? null
+                    : () => _printPdf(stats, laporan, _periodeTren),
+                icon: const Icon(Icons.print_outlined),
+                label: const Text('Print'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF2E7D32),
+                  side: const BorderSide(color: Color(0xFF2E7D32)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+              ),
+            ),
+          ],
         ),
-        label: const Text(
-          'Cetak PDF Analitik & Laporan',
-          style: TextStyle(
-            color: Color(0xFF2E7D32),
-            fontWeight: FontWeight.w600,
+        const SizedBox(height: 10),
+        OutlinedButton.icon(
+          onPressed: onPressed == null
+              ? null
+              : () => _previewPdf(stats, laporan, _periodeTren),
+          icon: _isGeneratingPdf
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.picture_as_pdf_outlined),
+          label: Text(_isGeneratingPdf ? 'Menyiapkan PDF...' : 'Preview PDF'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: const Color(0xFF2E7D32),
+            side: const BorderSide(color: Color(0xFF2E7D32)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 14),
           ),
         ),
-        style: OutlinedButton.styleFrom(
-          side: const BorderSide(
-            color: Color(0xFF2E7D32),
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          padding: const EdgeInsets.symmetric(vertical: 14),
-        ),
-      ),
+      ],
     );
   }
 
-  Future<void> _exportToPdf(
+  Future<void> _withPdfAction(Future<void> Function() action) async {
+    if (_isGeneratingPdf) return;
+    setState(() => _isGeneratingPdf = true);
+    try {
+      await action();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal membuat PDF: $e'),
+          backgroundColor: Colors.red[700],
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isGeneratingPdf = false);
+    }
+  }
+
+  Future<void> _downloadPdf(
     DashboardStats stats,
     List<LaporanItem> laporan,
     String periodeTren,
   ) async {
-    final font = await PdfGoogleFonts.notoSansRegular();
-    final boldFont = await PdfGoogleFonts.notoSansBold();
+    await _withPdfAction(() async {
+      final bytes = await _buildPdfBytes(stats, laporan, periodeTren);
+      await Printing.sharePdf(bytes: bytes, filename: _pdfFileName());
+    });
+  }
 
-    final doc = pw.Document(
-      theme: pw.ThemeData.withFont(base: font, bold: boldFont),
-    );
+  Future<void> _printPdf(
+    DashboardStats stats,
+    List<LaporanItem> laporan,
+    String periodeTren,
+  ) async {
+    await _withPdfAction(() async {
+      final bytes = await _buildPdfBytes(stats, laporan, periodeTren);
+      await Printing.layoutPdf(
+        name: _pdfFileName(),
+        format: PdfPageFormat.a4,
+        onLayout: (_) async => bytes,
+      );
+    });
+  }
+
+  Future<void> _previewPdf(
+    DashboardStats stats,
+    List<LaporanItem> laporan,
+    String periodeTren,
+  ) async {
+    await _withPdfAction(() async {
+      final bytes = await _buildPdfBytes(stats, laporan, periodeTren);
+      if (!mounted) return;
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (ctx) => Scaffold(
+            appBar: AppBar(
+              title: const Text('Preview PDF Laporan'),
+              backgroundColor: const Color(0xFF2E7D32),
+              foregroundColor: Colors.white,
+            ),
+            body: PdfPreview(
+              build: (format) => bytes,
+              allowSharing: true,
+              allowPrinting: true,
+              initialPageFormat: PdfPageFormat.a4,
+              pdfFileName: _pdfFileName(),
+            ),
+          ),
+        ),
+      );
+    });
+  }
+
+  String _pdfFileName() {
+    final stamp = DateFormat('yyyyMMdd_HHmm').format(DateTime.now());
+    return 'Laporan_Analitik_Pangan_$stamp.pdf';
+  }
+
+  Future<Uint8List> _buildPdfBytes(
+    DashboardStats stats,
+    List<LaporanItem> laporan,
+    String periodeTren,
+  ) async {
+    pw.ThemeData theme;
+    try {
+      final font = await PdfGoogleFonts.notoSansRegular();
+      final boldFont = await PdfGoogleFonts.notoSansBold();
+      theme = pw.ThemeData.withFont(base: font, bold: boldFont);
+    } catch (_) {
+      theme = pw.ThemeData.withFont(
+        base: pw.Font.helvetica(),
+        bold: pw.Font.helveticaBold(),
+      );
+    }
+
+    final doc = pw.Document(theme: theme);
     final now = DateTime.now();
     final dateStr = DateFormat('dd MMMM yyyy').format(now);
     final numFmt = NumberFormat.decimalPattern('id_ID');
@@ -900,7 +1029,7 @@ class _LaporanPageState extends State<LaporanPage>
                 ),
                 pw.SizedBox(height: 4),
                 pw.Text(
-                  'Kabupaten Lamongan ? $dateStr',
+                  'Kabupaten Lamongan - $dateStr',
                   style: const pw.TextStyle(
                     fontSize: 10,
                     color: PdfColors.white,
@@ -1267,28 +1396,7 @@ class _LaporanPageState extends State<LaporanPage>
       ),
     );
 
-    // Menggunakan sharePdf() agar langsung memicu Download (Web) atau dialog simpan (Mobile)
-    // Menggunakan PdfPreview
-    final bytes = await doc.save();
-    if (!mounted) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (ctx) => Scaffold(
-          appBar: AppBar(
-            title: const Text('Preview PDF Laporan'),
-            backgroundColor: const Color(0xFF2E7D32),
-            foregroundColor: Colors.white,
-          ),
-          body: PdfPreview(
-            build: (format) => bytes,
-            allowSharing: true,
-            allowPrinting: true,
-            initialPageFormat: PdfPageFormat.a4,
-            pdfFileName: 'Laporan_Analitik_Pangan_.pdf',
-          ),
-        ),
-      ),
-    );
+    return doc.save();
   }
 
   // KPI Card

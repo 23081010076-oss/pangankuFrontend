@@ -10,6 +10,7 @@ extension _LaporanPageSections on _LaporanPageState {
     final authState = context.read<AuthBloc>().state;
     final role = authState is AuthAuthenticated ? authState.role : '';
     final canEdit = role == 'admin' || role == 'petugas';
+    final canDelete = role == 'admin';
 
     return BlocBuilder<LaporanBloc, LaporanState>(
       builder: (ctx, state) {
@@ -78,8 +79,12 @@ extension _LaporanPageSections on _LaporanPageState {
             child: ListView.builder(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
               itemCount: state.laporanList.length,
-              itemBuilder: (_, i) =>
-                  _buildLaporanCard(ctx, state.laporanList[i], canEdit),
+              itemBuilder: (_, i) => _buildLaporanCard(
+                ctx,
+                state.laporanList[i],
+                canEdit,
+                canDelete,
+              ),
             ),
           );
         }
@@ -92,6 +97,7 @@ extension _LaporanPageSections on _LaporanPageState {
     BuildContext ctx,
     LaporanItem item,
     bool canEdit,
+    bool canDelete,
   ) {
     final statusColor = item.status == 'selesai'
         ? const Color(0xFF2E7D32)
@@ -202,28 +208,30 @@ extension _LaporanPageSections on _LaporanPageState {
             Row(
               children: [
                 _statusDropdown(ctx, item),
-                const SizedBox(width: 8),
-                TextButton.icon(
-                  onPressed: () => _confirmDelete(ctx, item.id),
-                  icon: const Icon(
-                    Icons.delete_outline,
-                    size: 16,
-                    color: Color(0xFFC62828),
-                  ),
-                  label: const Text(
-                    'Hapus',
-                    style: TextStyle(
-                      fontSize: 12,
+                if (canDelete) ...[
+                  const SizedBox(width: 8),
+                  TextButton.icon(
+                    onPressed: () => _confirmDelete(ctx, item.id),
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      size: 16,
                       color: Color(0xFFC62828),
                     ),
-                  ),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
+                    label: const Text(
+                      'Hapus',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFFC62828),
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                     ),
                   ),
-                ),
+                ],
               ],
             ),
           ],

@@ -56,8 +56,12 @@ class _DistribusiPageState extends State<DistribusiPage> {
     _distribusiRepository = context.read<DistribusiRepository>();
     _kecamatanRepository = context.read<KecamatanRepository>();
     _masterDataRepository = context.read<MasterDataRepository>();
-    _loadGreedyKomoditasOptions();
-    _loadGreedyRecommendations();
+    if (_canEditCurrentUser()) {
+      _loadGreedyKomoditasOptions();
+      _loadGreedyRecommendations();
+    } else {
+      _loadingGreedyKomoditas = false;
+    }
   }
 
   static const _statusList = [
@@ -216,7 +220,7 @@ class _DistribusiPageState extends State<DistribusiPage> {
             ),
           );
           ctx.read<DistribusiBloc>().add(LoadDistribusiList());
-          _loadGreedyRecommendations();
+          if (canEdit) _loadGreedyRecommendations();
         } else if (state is DistribusiStatusUpdated) {
           ScaffoldMessenger.of(ctx).showSnackBar(
             const SnackBar(
@@ -225,7 +229,7 @@ class _DistribusiPageState extends State<DistribusiPage> {
             ),
           );
           ctx.read<DistribusiBloc>().add(LoadDistribusiList());
-          _loadGreedyRecommendations();
+          if (canEdit) _loadGreedyRecommendations();
         } else if (state is DistribusiLoaded) {
           setState(() => _lastUpdatedAt = DateTime.now());
         } else if (state is DistribusiError) {
@@ -242,7 +246,7 @@ class _DistribusiPageState extends State<DistribusiPage> {
           interval: const Duration(seconds: 30),
           onRefresh: () async {
             context.read<DistribusiBloc>().add(RefreshDistribusi());
-            await _loadGreedyRecommendations();
+            if (canEdit) await _loadGreedyRecommendations();
           },
           child: Scaffold(
             backgroundColor: const Color(0xFFF5F7FA),
@@ -259,7 +263,7 @@ class _DistribusiPageState extends State<DistribusiPage> {
               color: const Color(0xFF2E7D32),
               onRefresh: () async {
                 context.read<DistribusiBloc>().add(RefreshDistribusi());
-                await _loadGreedyRecommendations();
+                if (canEdit) await _loadGreedyRecommendations();
               },
               child: CustomScrollView(
                 slivers: [
@@ -274,9 +278,10 @@ class _DistribusiPageState extends State<DistribusiPage> {
                     ),
                   ),
                   SliverToBoxAdapter(child: _buildFilters(state)),
-                  SliverToBoxAdapter(
-                    child: _buildGreedyRecommendations(canEdit),
-                  ),
+                  if (canEdit)
+                    SliverToBoxAdapter(
+                      child: _buildGreedyRecommendations(canEdit),
+                    ),
                   if (state is DistribusiLoading)
                     const SliverFillRemaining(
                       child: Center(
@@ -670,7 +675,8 @@ class _DistribusiPageState extends State<DistribusiPage> {
       decoration: InputDecoration(
         labelText: 'Komoditas',
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       ),
       items: items,
       onChanged: _loadingGreedyKomoditas || _loadingGreedyRecommendations
@@ -1070,28 +1076,29 @@ class _DistribusiPageState extends State<DistribusiPage> {
                         ),
                       ),
                     ),
-                    TextButton.icon(
-                      onPressed: () =>
-                          _confirmDeleteDistribusi(context, item.id),
-                      icon: const Icon(
-                        Icons.delete_outline,
-                        size: 14,
-                        color: Color(0xFFC62828),
-                      ),
-                      label: const Text(
-                        'Hapus',
-                        style: TextStyle(
-                          fontSize: 12,
+                    if (_canDeleteContext(context))
+                      TextButton.icon(
+                        onPressed: () =>
+                            _confirmDeleteDistribusi(context, item.id),
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          size: 14,
                           color: Color(0xFFC62828),
                         ),
-                      ),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
+                        label: const Text(
+                          'Hapus',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFFC62828),
+                          ),
+                        ),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -1313,6 +1320,18 @@ class _DistribusiPageState extends State<DistribusiPage> {
 
   bool _canEditContext(BuildContext ctx) {
     final authState = ctx.read<AuthBloc>().state;
+    final role = authState is AuthAuthenticated ? authState.role : '';
+    return role == 'admin' || role == 'petugas';
+  }
+
+  bool _canDeleteContext(BuildContext ctx) {
+    final authState = ctx.read<AuthBloc>().state;
+    final role = authState is AuthAuthenticated ? authState.role : '';
+    return role == 'admin';
+  }
+
+  bool _canEditCurrentUser() {
+    final authState = context.read<AuthBloc>().state;
     final role = authState is AuthAuthenticated ? authState.role : '';
     return role == 'admin' || role == 'petugas';
   }

@@ -55,6 +55,15 @@ class _DashboardPageState extends State<DashboardPage> {
   int _currentIndex = 0;
   DateTime? _homeLastUpdatedAt;
 
+  String _currentRole() {
+    final authState = context.read<AuthBloc>().state;
+    return authState is AuthAuthenticated ? authState.role : 'petani';
+  }
+
+  bool _isPrivilegedRole(String role) {
+    return role == 'admin' || role == 'petugas';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -71,36 +80,45 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildBottomNav() {
-    const items = [
+    final isPrivileged = _isPrivilegedRole(_currentRole());
+    final items = [
       {
         'icon': Icons.home_outlined,
         'activeIcon': Icons.home,
         'label': 'Beranda',
+        'index': 0,
       },
       {
         'icon': Icons.trending_up_outlined,
         'activeIcon': Icons.trending_up,
         'label': 'Harga',
+        'index': 1,
       },
-      {
-        'icon': Icons.inventory_2_outlined,
-        'activeIcon': Icons.inventory_2,
-        'label': 'Stok',
-      },
+      if (isPrivileged) ...[
+        {
+          'icon': Icons.inventory_2_outlined,
+          'activeIcon': Icons.inventory_2,
+          'label': 'Stok',
+          'index': 2,
+        },
+      ],
       {
         'icon': Icons.local_shipping_outlined,
         'activeIcon': Icons.local_shipping,
         'label': 'Distribusi',
+        'index': 3,
       },
       {
         'icon': Icons.bar_chart_outlined,
         'activeIcon': Icons.bar_chart,
         'label': 'Laporan',
+        'index': 4,
       },
       {
         'icon': Icons.person_outline,
         'activeIcon': Icons.person,
         'label': 'Profil',
+        'index': 5,
       },
     ];
 
@@ -119,14 +137,13 @@ class _DashboardPageState extends State<DashboardPage> {
         child: SizedBox(
           height: 60,
           child: Row(
-            children: items.asMap().entries.map((entry) {
-              final i = entry.key;
-              final item = entry.value;
-              final isActive = _currentIndex == i;
+            children: items.map((item) {
+              final targetIndex = item['index'] as int;
+              final isActive = _currentIndex == targetIndex;
               return Expanded(
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTap: () => setState(() => _currentIndex = i),
+                  onTap: () => setState(() => _currentIndex = targetIndex),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -163,6 +180,7 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _getCurrentPage() {
+    final isPrivileged = _isPrivilegedRole(_currentRole());
     switch (_currentIndex) {
       case 0:
         return MultiBlocProvider(
@@ -205,6 +223,11 @@ class _DashboardPageState extends State<DashboardPage> {
           child: const HargaPage(),
         );
       case 2:
+        if (!isPrivileged) {
+          return _HomePage(
+            onTabChange: (i) => setState(() => _currentIndex = i),
+          );
+        }
         return BlocProvider(
           create: (context) =>
               StokBloc(context.read<StokRepository>())..add(LoadStokList()),
